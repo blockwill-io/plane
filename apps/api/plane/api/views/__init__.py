@@ -33,6 +33,8 @@ from .issue import (
     IssueRelationListCreateAPIEndpoint,
 )
 
+from .move import MoveWorkItemAPIEndpoint
+
 from .cycle import (
     CycleListCreateAPIEndpoint,
     CycleListLiteAPIEndpoint,

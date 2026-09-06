@@ -18,6 +18,7 @@ from plane.api.views import (
     WorkspaceIssueAPIEndpoint,
     IssueSearchEndpoint,
     IssueRelationListCreateAPIEndpoint,
+    MoveWorkItemAPIEndpoint,
 )
 
 # Deprecated url patterns
@@ -150,6 +151,17 @@ new_url_patterns = [
         "workspaces/<str:slug>/projects/<uuid:project_id>/work-items/<uuid:issue_id>/relations/",
         IssueRelationListCreateAPIEndpoint.as_view(http_method_names=["get", "post"]),
         name="work-item-relation-list",
+    ),
+    # BlockWill fork addition — cross-project move (see plane/api/views/move.py)
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/issues/<uuid:pk>/move/",
+        MoveWorkItemAPIEndpoint.as_view(http_method_names=["post"]),
+        name="issue-move",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/work-items/<uuid:pk>/move/",
+        MoveWorkItemAPIEndpoint.as_view(http_method_names=["post"]),
+        name="work-item-move",
     ),
 ]
 
