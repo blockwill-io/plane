@@ -18,5 +18,5 @@ export type TUseFiltersOperatorConfigsProps = {
 
 export const useFiltersOperatorConfigs = (_props: TUseFiltersOperatorConfigsProps): TFiltersOperatorConfigs => ({
   allowedOperators: new Set(Object.values(CORE_OPERATORS)),
-  allowNegative: false,
+  allowNegative: true,
 });

@@ -62,9 +62,22 @@ export type TComparisonOperator = (typeof COMPARISON_OPERATOR)[keyof typeof COMP
 export type TSupportedOperators = TCoreSupportedOperators | TExtendedSupportedOperators;
 
 /**
+ * Prefix used to build the negated display variant of an operator.
+ */
+export const NEGATION_OPERATOR_PREFIX = "not_" as const;
+
+/**
+ * Negated display variant of a supported operator (e.g. "not_in", "not_exact").
+ * Negation is display-only: conditions store the positive operator plus an
+ * `isNegated` flag, and adapters serialize negated conditions as `{ not: {...} }`.
+ */
+export type TNegationOperator<T extends TSupportedOperators = TSupportedOperators> =
+  `${typeof NEGATION_OPERATOR_PREFIX}${T}`;
+
+/**
  * All operators available for use in rich filters UI, including negated versions.
  */
-export type TAllAvailableOperatorsForDisplay = TSupportedOperators;
+export type TAllAvailableOperatorsForDisplay = TSupportedOperators | TNegationOperator;
 
 // -------- RE-EXPORTS --------
 

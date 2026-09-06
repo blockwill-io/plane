@@ -233,9 +233,9 @@ export class FilterInstanceHelper<
    */
   private _getConditionPayloadToAdd = (
     condition: TFilterConditionPayload<P, TFilterValue>,
-    _isNegation: boolean
+    isNegation: boolean
   ): TFilterExpression<P> => {
-    const conditionNode = createConditionNode(condition);
+    const conditionNode = createConditionNode({ ...condition, isNegated: isNegation });
 
     return conditionNode;
   };
@@ -273,10 +273,10 @@ export class FilterInstanceHelper<
     expression: TFilterExpression<P>,
     conditionId: string,
     payload: Partial<TFilterConditionNode<P, TFilterValue>>,
-    _isNegation: boolean
+    isNegation: boolean
   ): TFilterExpression<P> | null => {
-    // Update the condition with the payload
-    updateNodeInExpression(expression, conditionId, payload);
+    // Update the condition with the payload and the negation flag
+    updateNodeInExpression(expression, conditionId, { ...payload, isNegated: isNegation });
 
     return expression;
   };

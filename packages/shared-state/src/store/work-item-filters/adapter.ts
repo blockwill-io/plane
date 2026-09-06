@@ -69,6 +69,29 @@ class WorkItemFiltersAdapter extends FilterAdapter<TWorkItemFilterProperty, TWor
     // It's a logical group - check which type
     const expressionKeys = Object.keys(expression);
 
+    // NOT group - a negated condition wrapped as { not: { ... } }
+    if ("not" in expression) {
+      const notExpression = expression as { not: TWorkItemFilterExpressionData };
+      const child = notExpression.not;
+
+      if (!this._isWorkItemFilterConditionData(child)) {
+        throw new Error("NOT group must contain a single condition");
+      }
+
+      const conditionResult = this._extractWorkItemFilterConditionData(child);
+      if (!conditionResult) {
+        throw new Error("Failed to extract condition data from NOT group");
+      }
+
+      const [property, operator, value] = conditionResult;
+      return createConditionNode({
+        property,
+        operator,
+        value,
+        isNegated: true,
+      });
+    }
+
     if (LOGICAL_OPERATOR.AND in expression) {
       const andExpression = expression as { [LOGICAL_OPERATOR.AND]: TWorkItemFilterExpressionData[] };
       const andConditions = andExpression[LOGICAL_OPERATOR.AND];
@@ -111,7 +134,16 @@ class WorkItemFiltersAdapter extends FilterAdapter<TWorkItemFilterProperty, TWor
     expression: TFilterExpression<TWorkItemFilterProperty>
   ): TWorkItemFilterExpressionData {
     if (isConditionNode(expression)) {
-      return this._createWorkItemFilterConditionData(expression.property, expression.operator, expression.value);
+      const conditionData = this._createWorkItemFilterConditionData(
+        expression.property,
+        expression.operator,
+        expression.value
+      );
+      // Negated conditions are serialized as a NOT group around the positive condition
+      if (expression.isNegated) {
+        return { not: conditionData } as TWorkItemFilterExpressionData;
+      }
+      return conditionData;
     }
 
     // It's a group node
@@ -137,7 +169,7 @@ class WorkItemFiltersAdapter extends FilterAdapter<TWorkItemFilterProperty, TWor
     if (keys.length === 0) return false;
 
     // Check if any key contains logical operators (would indicate it's a group)
-    const hasLogicalOperators = keys.some((key) => key === LOGICAL_OPERATOR.AND);
+    const hasLogicalOperators = keys.some((key) => key === LOGICAL_OPERATOR.AND || key === "not");
     if (hasLogicalOperators) return false;
 
     // All keys must match the work item filter condition key pattern

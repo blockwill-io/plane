@@ -5,6 +5,8 @@
  */
 
 import type { TFilterValue } from "../expression";
+import type { TNegationOperator } from "../operators";
+import type { TCoreSupportedDateFilterOperators, TCoreSupportedSelectFilterOperators } from "./core";
 
 // -------- DATE FILTER OPERATORS --------
 
@@ -13,7 +15,8 @@ import type { TFilterValue } from "../expression";
  */
 export type TExtendedSupportedDateFilterOperators<_V extends TFilterValue = TFilterValue> = never;
 
-export type TExtendedAllAvailableDateFilterOperatorsForDisplay<_V extends TFilterValue = TFilterValue> = never;
+export type TExtendedAllAvailableDateFilterOperatorsForDisplay<V extends TFilterValue = TFilterValue> =
+  TNegationOperator<TCoreSupportedDateFilterOperators<V>>;
 
 // -------- SELECT FILTER OPERATORS --------
 
@@ -22,4 +25,5 @@ export type TExtendedAllAvailableDateFilterOperatorsForDisplay<_V extends TFilte
  */
 export type TExtendedSupportedSelectFilterOperators<_V extends TFilterValue = TFilterValue> = never;
 
-export type TExtendedAllAvailableSelectFilterOperatorsForDisplay<_V extends TFilterValue = TFilterValue> = never;
+export type TExtendedAllAvailableSelectFilterOperatorsForDisplay<V extends TFilterValue = TFilterValue> =
+  TNegationOperator<TCoreSupportedSelectFilterOperators<V>>;

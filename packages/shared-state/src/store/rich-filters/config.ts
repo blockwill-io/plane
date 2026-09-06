@@ -23,7 +23,9 @@ import {
   isDateFilterType,
   getDateOperatorLabel,
   isDateFilterOperator,
+  getNegatedOperator,
   getOperatorForPayload,
+  isNegationOperator,
 } from "@plane/utils";
 
 type TOperatorOptionForDisplay = {
@@ -40,7 +42,10 @@ export interface IFilterConfig<P extends TFilterProperty> extends TFilterConfig<
     operator: TAllAvailableOperatorsForDisplay
   ) => TOperatorSpecificConfigs[keyof TOperatorSpecificConfigs] | undefined;
   getLabelForOperator: (operator: TAllAvailableOperatorsForDisplay | undefined) => string;
-  getDisplayOperatorByValue: <T extends TSupportedOperators>(operator: T, value: TFilterValue) => T;
+  getDisplayOperatorByValue: (
+    operator: TAllAvailableOperatorsForDisplay,
+    value: TFilterValue
+  ) => TAllAvailableOperatorsForDisplay;
   getAllDisplayOperatorOptionsByValue: (value: TFilterValue) => TOperatorOptionForDisplay[];
   // actions
   mutate: (updates: Partial<TFilterConfig<P>>) => void;
@@ -123,7 +128,11 @@ export class FilterConfig<P extends TFilterProperty> implements IFilterConfig<P>
 
     const operatorConfig = this.getOperatorConfig(operator);
 
-    if (operatorConfig?.operatorLabel) {
+    if (isNegationOperator(operator)) {
+      if (operatorConfig && "negOperatorLabel" in operatorConfig && operatorConfig.negOperatorLabel) {
+        return operatorConfig.negOperatorLabel;
+      }
+    } else if (operatorConfig?.operatorLabel) {
       return operatorConfig.operatorLabel;
     }
 
@@ -140,11 +149,13 @@ export class FilterConfig<P extends TFilterProperty> implements IFilterConfig<P>
    * @returns The operator for the value.
    */
   getDisplayOperatorByValue: IFilterConfig<P>["getDisplayOperatorByValue"] = computedFn((operator, value) => {
-    const operatorConfig = this.getOperatorConfig(operator);
+    const { operator: positiveOperator, isNegation } = getOperatorForPayload(operator);
+    const operatorConfig = this.getOperatorConfig(positiveOperator);
+    let displayOperator: TSupportedOperators = positiveOperator;
     if (operatorConfig?.type === FILTER_FIELD_TYPE.MULTI_SELECT && (Array.isArray(value) ? value.length : 0) <= 1) {
-      return operatorConfig.singleValueOperator as typeof operator;
+      displayOperator = operatorConfig.singleValueOperator;
     }
-    return operator;
+    return isNegation ? getNegatedOperator(displayOperator) : displayOperator;
   });
 
   /**
@@ -196,7 +207,16 @@ export class FilterConfig<P extends TFilterProperty> implements IFilterConfig<P>
   // ------------ private helpers ------------
 
   private _getAdditionalOperatorOptions = (
-    _operator: TSupportedOperators,
-    _value: TFilterValue
-  ): TOperatorOptionForDisplay | undefined => undefined;
+    operator: TSupportedOperators,
+    value: TFilterValue
+  ): TOperatorOptionForDisplay | undefined => {
+    const operatorConfig = this.supportedOperatorConfigsMap.get(operator);
+    if (!operatorConfig?.isOperatorEnabled || !operatorConfig.allowNegative) return undefined;
+
+    const negatedOperator = getNegatedOperator(operator);
+    return {
+      value: negatedOperator,
+      label: this.getLabelForOperator(this.getDisplayOperatorByValue(negatedOperator, value)),
+    };
+  };
 }
