@@ -43,10 +43,10 @@ from plane.utils.uuid import convert_uuid_to_integer
 from .base import BaseAPIView
 
 # Related rows that only need their denormalized project pointer rewritten.
+# CommentReaction is handled separately — it references the comment, not the issue.
 PROJECT_SCOPED_RELATED = (
     IssueLink,
     IssueComment,
-    CommentReaction,
     IssueReaction,
     IssueSubscriber,
     IssueMention,
@@ -140,6 +140,7 @@ class MoveWorkItemAPIEndpoint(BaseAPIView):
 
         for related_model in PROJECT_SCOPED_RELATED:
             related_model.objects.filter(issue=issue).update(project=target_project)
+        CommentReaction.objects.filter(comment__issue=issue).update(project=target_project)
         FileAsset.objects.filter(issue=issue).update(project=target_project)
 
         sequence_id = self._next_sequence_id(target_project)
