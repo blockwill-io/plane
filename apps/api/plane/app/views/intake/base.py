@@ -43,6 +43,7 @@ from plane.app.serializers import (
     IntakeIssueDetailSerializer,
     IssueDescriptionVersionDetailSerializer,
 )
+from plane.utils.duplicate_automation import link_intake_duplicate
 from plane.utils.issue_filters import issue_filters
 from plane.utils.order_queryset import INTAKE_ISSUE_ORDER_BY_ALLOWLIST, sanitize_order_by
 from plane.bgtasks.issue_activities_task import issue_activity
@@ -459,6 +460,10 @@ class IntakeIssueViewSet(BaseViewSet):
 
         if intake_serializer:
             intake_serializer.save()
+            # BlockWill fork: declining as duplicate also records the symmetric
+            # duplicate relation so the canonical ticket shows the link.
+            intake_issue.refresh_from_db()
+            link_intake_duplicate(intake_issue, request.user)
             # create a activity for status change
             issue_activity.delay(
                 type="intake.activity.created",

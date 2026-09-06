@@ -31,6 +31,7 @@ from plane.db.models import (
 )
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.utils.issue_relation_mapper import get_actual_relation
+from plane.utils.duplicate_automation import cancel_duplicate_issue
 from plane.utils.host import base_host
 
 
@@ -256,6 +257,11 @@ class IssueRelationViewSet(BaseViewSet):
             notification=True,
             origin=base_host(request=request, is_app=True),
         )
+
+        # BlockWill fork: marking "Duplicate of" also cancels the marking item
+        # (Linear behavior). The URL issue is the one declared a duplicate.
+        if get_actual_relation(relation_type) == "duplicate" and issues:
+            cancel_duplicate_issue(issue_id, request.user)
 
         if relation_type in ["blocking", "start_after", "finish_after"]:
             return Response(

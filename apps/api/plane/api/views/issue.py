@@ -79,6 +79,7 @@ from plane.db.models import (
     Workspace,
 )
 from plane.settings.storage import S3Storage
+from plane.utils.duplicate_automation import cancel_duplicate_issue
 from plane.utils.path_validator import sanitize_filename
 from plane.utils.order_queryset import (
     ACTIVITY_ORDER_BY_ALLOWLIST,
@@ -2557,6 +2558,11 @@ class IssueRelationListCreateAPIEndpoint(BaseAPIView):
             notification=True,
             origin=base_host(request=request, is_app=True),
         )
+
+        # BlockWill fork: marking "Duplicate of" also cancels the marking item
+        # (Linear behavior). The URL issue is the one declared a duplicate.
+        if actual_relation == "duplicate" and issues:
+            cancel_duplicate_issue(issue_id, request.user)
 
         # Re-fetch with select_related to avoid N+1 queries in serializers.
         # bulk_create with ignore_conflicts=True may not return PKs,
