@@ -7,7 +7,7 @@
 // plane imports
 import type { TFilterAndGroupNode, TFilterExpression, TFilterGroupNode, TFilterProperty } from "@plane/types";
 // local imports
-import { getAndGroupChildren, isAndGroupNode } from "./core";
+import { getAndGroupChildren, isAndGroupNode, isOrGroupNode } from "./core";
 
 type TProcessGroupNodeHandlers<P extends TFilterProperty, T> = {
   onAndGroup: (group: TFilterAndGroupNode<P>) => T;
@@ -23,7 +23,9 @@ export const processGroupNode = <P extends TFilterProperty, T>(
   group: TFilterGroupNode<P>,
   handlers: TProcessGroupNodeHandlers<P, T>
 ): T => {
-  if (isAndGroupNode(group)) {
+  // AND and OR groups share the same struct (flat children); the handler reads
+  // whichever children they hold regardless of the operator.
+  if (isAndGroupNode(group) || isOrGroupNode(group)) {
     return handlers.onAndGroup(group);
   }
   throw new Error(`Invalid group node: unknown logical operator ${group}`);

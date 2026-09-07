@@ -15,7 +15,7 @@ import type {
 // local imports
 import { createAndGroupNode } from "../../factories/nodes/core";
 import { getGroupChildren } from "../../types";
-import { isAndGroupNode, isConditionNode, isGroupNode } from "../../types/core";
+import { isConditionNode, isGroupNode } from "../../types/core";
 import { shouldUnwrapGroup } from "../../validators/shared";
 import { transformExpressionTree } from "../transformation/core";
 
@@ -37,14 +37,11 @@ export const addAndCondition = <P extends TFilterProperty>(
   if (isConditionNode(expression)) {
     return createAndGroupNode([expression, condition]);
   }
-  // if the expression is a group, and the group is an AND group, add the new condition to the group
-  if (isGroupNode(expression) && isAndGroupNode(expression)) {
+  // if the expression is the root group (AND or OR — conditions stay flat), add
+  // the new condition to it, preserving the current match-all/match-any mode
+  if (isGroupNode(expression)) {
     expression.children.push(condition);
     return expression;
-  }
-  // if the expression is a group, but not an AND group, create a new AND group and add the new condition to it
-  if (isGroupNode(expression) && !isAndGroupNode(expression)) {
-    return createAndGroupNode([expression, condition]);
   }
   // Throw error for unexpected expression type
   console.error("Invalid expression type", expression);

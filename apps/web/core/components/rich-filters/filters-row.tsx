@@ -17,6 +17,7 @@ import { cn, EHeaderVariant, Header, Loader } from "@plane/ui";
 import type { TAddFilterButtonProps } from "./add-filters/button";
 import { AddFilterButton } from "./add-filters/button";
 import { FilterItem } from "./filter-item/root";
+import { MatchModeToggle } from "./match-mode-toggle";
 
 export type TFiltersRowProps<K extends TFilterProperty, E extends TExternalFilter> = {
   buttonConfig?: TAddFilterButtonProps<K, E>["buttonConfig"];
@@ -67,6 +68,9 @@ export const FiltersRow = observer(function FiltersRow<K extends TFilterProperty
 
   const leftContent = (
     <>
+      {filter.allConditionsForDisplay.length >= 2 && (
+        <MatchModeToggle filter={filter} isDisabled={disabledAllOperations} />
+      )}
       {filter.allConditionsForDisplay.map((condition) => (
         <FilterItem key={condition.id} filter={filter} condition={condition} isDisabled={disabledAllOperations} />
       ))}

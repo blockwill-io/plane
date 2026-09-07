@@ -42,3 +42,17 @@ export const createAndGroupNode = <P extends TFilterProperty>(
   logicalOperator: LOGICAL_OPERATOR.AND,
   children: nodes,
 });
+
+/**
+ * Creates an OR ("match any") group node with a unique ID.
+ * @param nodes - The nodes to add to the group
+ * @returns The created OR group node
+ */
+export const createOrGroupNode = <P extends TFilterProperty>(
+  nodes: TFilterExpression<P>[]
+): TFilterAndGroupNode<P> => ({
+  id: uuidv4(),
+  type: FILTER_NODE_TYPE.GROUP,
+  logicalOperator: LOGICAL_OPERATOR.OR,
+  children: nodes,
+});

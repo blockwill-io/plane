@@ -31,7 +31,7 @@ import type {
   TLogicalOperator,
   TSupportedOperators,
 } from "@plane/types";
-import { FILTER_NODE_TYPE } from "@plane/types";
+import { FILTER_NODE_TYPE, LOGICAL_OPERATOR } from "@plane/types";
 // local imports
 import {
   deepCompareFilterExpressions,
@@ -40,6 +40,7 @@ import {
   findConditionsByPropertyAndOperator,
   findNodeById,
   hasValidValue,
+  isGroupNode,
   removeNodeFromExpression,
   sanitizeAndStabilizeExpression,
   shouldNotifyChangeForExpression,
@@ -83,6 +84,8 @@ export interface IFilterInstance<P extends TFilterProperty, E extends TExternalF
   isVisible: boolean;
   allConditions: TFilterConditionNode<P, TFilterValue>[];
   allConditionsForDisplay: TFilterConditionNodeForDisplay<P, TFilterValue>[];
+  // root match mode: "and" (match all) or "or" (match any)
+  rootLogicalOperator: TLogicalOperator;
   // computed option helpers
   clearFilterOptions: TClearFilterOptions | undefined;
   saveViewOptions: TSaveViewOptions<E> | undefined;
@@ -122,6 +125,8 @@ export interface IFilterInstance<P extends TFilterProperty, E extends TExternalF
     forceUpdate?: boolean
   ) => void;
   removeCondition: (conditionId: string) => void;
+  // root match mode action
+  setRootLogicalOperator: (operator: TLogicalOperator) => void;
   // config actions
   clearFilters: () => Promise<void>;
   saveView: () => Promise<void>;
@@ -181,6 +186,7 @@ export class FilterInstance<P extends TFilterProperty, E extends TExternalFilter
       isVisible: computed,
       allConditions: computed,
       allConditionsForDisplay: computed,
+      rootLogicalOperator: computed,
       // computed option helpers
       clearFilterOptions: computed,
       saveViewOptions: computed,
@@ -197,6 +203,7 @@ export class FilterInstance<P extends TFilterProperty, E extends TExternalFilter
       updateConditionOperator: action,
       updateConditionValue: action,
       removeCondition: action,
+      setRootLogicalOperator: action,
       clearFilters: action,
       saveView: action,
       updateView: action,
@@ -251,6 +258,18 @@ export class FilterInstance<P extends TFilterProperty, E extends TExternalFilter
   get allConditionsForDisplay(): IFilterInstance<P, E>["allConditionsForDisplay"] {
     if (!this.expression) return [];
     return extractConditionsWithDisplayOperators(this.expression);
+  }
+
+  /**
+   * Returns the root match mode: "and" (match all) or "or" (match any).
+   * Defaults to "and" when there is no group yet (0 or 1 conditions).
+   * @returns The root logical operator.
+   */
+  get rootLogicalOperator(): IFilterInstance<P, E>["rootLogicalOperator"] {
+    if (this.expression && isGroupNode(this.expression)) {
+      return this.expression.logicalOperator;
+    }
+    return LOGICAL_OPERATOR.AND;
   }
 
   // ------------ computed option helpers ------------
@@ -494,6 +513,19 @@ export class FilterInstance<P extends TFilterProperty, E extends TExternalFilter
     if (shouldNotify) {
       this._notifyExpressionChange();
     }
+  });
+
+  /**
+   * Sets the root match mode ("and" = match all, "or" = match any).
+   * A no-op until a group exists (i.e. at least two conditions), since a single
+   * condition means the same thing under either operator.
+   * @param operator - The new root logical operator.
+   */
+  setRootLogicalOperator: IFilterInstance<P, E>["setRootLogicalOperator"] = action((operator) => {
+    if (!this.expression || !isGroupNode(this.expression)) return;
+    if (this.expression.logicalOperator === operator) return;
+    this.expression.logicalOperator = operator;
+    this._notifyExpressionChange();
   });
 
   /**

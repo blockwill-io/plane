@@ -122,11 +122,15 @@ export type TWorkItemFilterAndGroup = {
   [LOGICAL_OPERATOR.AND]: TWorkItemFilterExpressionData[];
 };
 
+export type TWorkItemFilterOrGroup = {
+  [LOGICAL_OPERATOR.OR]: TWorkItemFilterExpressionData[];
+};
+
 export type TWorkItemFilterNotGroup = {
   not: TWorkItemFilterConditionData;
 };
 
-export type TWorkItemFilterGroup = TWorkItemFilterAndGroup | TWorkItemFilterNotGroup;
+export type TWorkItemFilterGroup = TWorkItemFilterAndGroup | TWorkItemFilterOrGroup | TWorkItemFilterNotGroup;
 
 export type TWorkItemFilterExpressionData = TWorkItemFilterConditionData | TWorkItemFilterGroup;
 

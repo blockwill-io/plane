@@ -7,7 +7,9 @@
 /**
  * Extended logical operators
  */
-export const EXTENDED_LOGICAL_OPERATOR = {} as const;
+export const EXTENDED_LOGICAL_OPERATOR = {
+  OR: "or",
+} as const;
 
 /**
  * Extended equality operators

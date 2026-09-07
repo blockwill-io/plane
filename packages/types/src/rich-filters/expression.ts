@@ -6,7 +6,7 @@
 
 // local imports
 import type { SingleOrArray } from "../utils";
-import type { TSupportedOperators, LOGICAL_OPERATOR, TAllAvailableOperatorsForDisplay } from "./operators";
+import type { TSupportedOperators, TAllAvailableOperatorsForDisplay, TLogicalOperator } from "./operators";
 
 /**
  * Filter node types for building hierarchical filter trees.
@@ -75,12 +75,15 @@ export type TFilterConditionNodeForDisplay<P extends TFilterProperty, V extends 
  */
 export type TFilterAndGroupNode<P extends TFilterProperty> = TBaseFilterNode & {
   type: typeof FILTER_NODE_TYPE.GROUP;
-  logicalOperator: typeof LOGICAL_OPERATOR.AND;
+  // Root-level match mode: "and" (match all) or "or" (match any). Conditions
+  // stay flat children of a single group; the operator is toggled globally.
+  logicalOperator: TLogicalOperator;
   children: TFilterExpression<P>[];
 };
 
 /**
- * Union type for all group node types - AND, OR, and NOT groups.
+ * Union type for all group node types. Structurally a single group container
+ * whose logicalOperator selects AND (match all) or OR (match any).
  * @template P - Property key type
  */
 export type TFilterGroupNode<P extends TFilterProperty> = TFilterAndGroupNode<P>;

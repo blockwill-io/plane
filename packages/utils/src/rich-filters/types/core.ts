@@ -42,6 +42,14 @@ export const isAndGroupNode = <P extends TFilterProperty>(
 ): group is TFilterAndGroupNode<P> => group.logicalOperator === LOGICAL_OPERATOR.AND;
 
 /**
+ * Type guard to check if a group node is an OR ("match any") group.
+ * @param group - The group node to check
+ * @returns True if the group is an OR group
+ */
+export const isOrGroupNode = <P extends TFilterProperty>(group: TFilterGroupNode<P>): boolean =>
+  group.logicalOperator === LOGICAL_OPERATOR.OR;
+
+/**
  * Type guard to check if a group node has children property
  * @param group - The group node to check
  * @returns True if the group has children property
