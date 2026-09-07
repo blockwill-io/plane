@@ -6,7 +6,7 @@
 
 // plane imports
 import type { IProject, IUserLite, TOperatorConfigMap, TSupportedOperators } from "@plane/types";
-import { COMPARISON_OPERATOR, EQUALITY_OPERATOR } from "@plane/types";
+import { COMPARISON_OPERATOR, EQUALITY_OPERATOR, EXTENDED_COMPARISON_OPERATOR } from "@plane/types";
 // local imports
 import { getDatePickerConfig, getDateRangePickerConfig, getMultiSelectConfig } from "../core";
 import type { IFilterIconConfig, TCreateDateFilterParams, TCreateFilterConfigParams, TFilterIconType } from "../shared";
@@ -52,6 +52,13 @@ export const getSupportedDateOperators = (params: TCreateDateFilterParams): TOpe
     createOperatorConfigEntry(EQUALITY_OPERATOR.EXACT, params, (updatedParams) => getDatePickerConfig(updatedParams)),
     createOperatorConfigEntry(COMPARISON_OPERATOR.RANGE, params, (updatedParams) =>
       getDateRangePickerConfig(updatedParams)
+    ),
+    // BlockWill fork: single-date "is before" / "is after" comparisons.
+    createOperatorConfigEntry(EXTENDED_COMPARISON_OPERATOR.LTE, params, (updatedParams) =>
+      getDatePickerConfig(updatedParams)
+    ),
+    createOperatorConfigEntry(EXTENDED_COMPARISON_OPERATOR.GTE, params, (updatedParams) =>
+      getDatePickerConfig(updatedParams)
     ),
   ]);
 

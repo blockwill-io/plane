@@ -183,16 +183,23 @@ class IssueFilterSet(BaseFilterSet):
     created_at = filters.DateFilter(field_name="created_at", lookup_expr="date")
     created_at__exact = filters.DateFilter(field_name="created_at", lookup_expr="date")
     created_at__range = DateCSVRangeFilter(field_name="created_at", lookup_expr="date__range")
+    # BlockWill fork: before/after comparisons (compare the date component of the
+    # datetime, matching the exact/range lookups above).
+    created_at__gte = filters.DateFilter(field_name="created_at", lookup_expr="date__gte")
+    created_at__lte = filters.DateFilter(field_name="created_at", lookup_expr="date__lte")
 
     updated_at = filters.DateFilter(field_name="updated_at", lookup_expr="date")
     updated_at__exact = filters.DateFilter(field_name="updated_at", lookup_expr="date")
     updated_at__range = DateCSVRangeFilter(field_name="updated_at", lookup_expr="date__range")
+    updated_at__gte = filters.DateFilter(field_name="updated_at", lookup_expr="date__gte")
+    updated_at__lte = filters.DateFilter(field_name="updated_at", lookup_expr="date__lte")
 
     class Meta:
         model = Issue
+        # start_date / target_date are DateFields — gte/lte compare directly.
         fields = {
-            "start_date": ["exact", "range"],
-            "target_date": ["exact", "range"],
+            "start_date": ["exact", "range", "gte", "lte"],
+            "target_date": ["exact", "range", "gte", "lte"],
             "created_at": ["exact", "range"],
             "updated_at": ["exact", "range"],
             "is_draft": ["exact"],

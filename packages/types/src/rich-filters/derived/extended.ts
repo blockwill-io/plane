@@ -5,18 +5,20 @@
  */
 
 import type { TFilterValue } from "../expression";
-import type { TNegationOperator } from "../operators";
+import type { TNegationOperator, TExtendedComparisonOperator } from "../operators";
 import type { TCoreSupportedDateFilterOperators, TCoreSupportedSelectFilterOperators } from "./core";
 
 // -------- DATE FILTER OPERATORS --------
 
 /**
  * Union type representing all extended operators that support date filter types.
+ * BlockWill fork: the LTE/GTE comparison operators are single-date ("before"/"after").
  */
-export type TExtendedSupportedDateFilterOperators<_V extends TFilterValue = TFilterValue> = never;
+export type TExtendedSupportedDateFilterOperators<_V extends TFilterValue = TFilterValue> = TExtendedComparisonOperator;
 
 export type TExtendedAllAvailableDateFilterOperatorsForDisplay<V extends TFilterValue = TFilterValue> =
-  TNegationOperator<TCoreSupportedDateFilterOperators<V>>;
+  | TExtendedComparisonOperator
+  | TNegationOperator<TCoreSupportedDateFilterOperators<V>>;
 
 // -------- SELECT FILTER OPERATORS --------
 

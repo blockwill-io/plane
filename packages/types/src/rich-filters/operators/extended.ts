@@ -22,9 +22,13 @@ export const EXTENDED_EQUALITY_OPERATOR = {} as const;
 export const EXTENDED_COLLECTION_OPERATOR = {} as const;
 
 /**
- * Extended comparison operators
+ * Extended comparison operators. LTE/GTE are single-value date comparisons
+ * ("is before" / "is after"), serialized as {field}__lte / {field}__gte.
  */
-export const EXTENDED_COMPARISON_OPERATOR = {} as const;
+export const EXTENDED_COMPARISON_OPERATOR = {
+  LTE: "lte",
+  GTE: "gte",
+} as const;
 
 /**
  * Extended operators that support multiple values
@@ -43,3 +47,9 @@ export const EXTENDED_OPERATORS = {
  * All extended operators that can be used in filter conditions
  */
 export type TExtendedSupportedOperators = (typeof EXTENDED_OPERATORS)[keyof typeof EXTENDED_OPERATORS];
+
+/**
+ * Extended comparison operators (LTE / GTE) — single-date before/after.
+ */
+export type TExtendedComparisonOperator =
+  (typeof EXTENDED_COMPARISON_OPERATOR)[keyof typeof EXTENDED_COMPARISON_OPERATOR];
