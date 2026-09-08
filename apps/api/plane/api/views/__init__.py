@@ -10,6 +10,12 @@ from .project import (
     ProjectSummaryAPIEndpoint,
 )
 
+from .milestone import (
+    MilestoneListCreateAPIEndpoint,
+    MilestoneDetailAPIEndpoint,
+    MilestoneWorkItemAPIEndpoint,
+)
+
 from .state import (
     StateListCreateAPIEndpoint,
     StateDetailAPIEndpoint,

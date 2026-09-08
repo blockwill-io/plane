@@ -31,6 +31,7 @@ from .issue import (
     RelatedIssueSerializer,
 )
 from .state import StateLiteSerializer, StateSerializer
+from .milestone import MilestoneAPISerializer, IssueMilestoneAPISerializer
 from .cycle import (
     CycleSerializer,
     CycleIssueSerializer,
