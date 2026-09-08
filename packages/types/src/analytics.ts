@@ -37,7 +37,7 @@ export enum ChartYAxisMetric {
   EPIC_WORK_ITEM_COUNT = "EPIC_WORK_ITEM_COUNT",
 }
 
-export type TAnalyticsTabsBase = "overview" | "work-items";
+export type TAnalyticsTabsBase = "overview" | "work-items" | "throughput";
 export type TAnalyticsGraphsBase = "projects" | "work-items" | "custom-work-items";
 export interface AnalyticsTab {
   key: TAnalyticsTabsBase;
@@ -87,6 +87,9 @@ export interface WorkItemInsightColumns {
 
 export type AnalyticsTableDataMap = {
   "work-items": WorkItemInsightColumns;
+  // BlockWill fork: the throughput tab renders its own list, not an insight
+  // table — `never` states that it can't be passed to InsightTable.
+  throughput: never;
 };
 
 export interface IAnalyticsParams {
@@ -94,3 +97,33 @@ export interface IAnalyticsParams {
   y_axis: ChartYAxisMetric;
   group_by?: ChartXAxisProperty;
 }
+
+/**
+ * BlockWill fork — team throughput (completed work over a window).
+ */
+export type TThroughputWorkItem = {
+  id: string;
+  sequence_id: number;
+  name: string;
+  project_id: string;
+  project_identifier: string;
+  identifier: string;
+  state_name: string | null;
+  completed_at: string;
+};
+
+export type TThroughputAssigneeBucket = {
+  assignee_id: string | null;
+  display_name: string;
+  avatar_url: string | null;
+  count: number;
+  work_items: TThroughputWorkItem[];
+};
+
+export type TThroughputResponse = {
+  start_date: string;
+  end_date: string;
+  total_completed: number;
+  is_truncated: boolean;
+  by_assignee: TThroughputAssigneeBucket[];
+};

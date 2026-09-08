@@ -6,6 +6,7 @@ from django.urls import path
 
 
 from plane.app.views import (
+    ThroughputAnalyticsEndpoint,
     AnalyticsEndpoint,
     AnalyticViewViewset,
     SavedAnalyticEndpoint,
@@ -86,5 +87,16 @@ urlpatterns = [
         "workspaces/<str:slug>/projects/<uuid:project_id>/advance-analytics-charts/",
         ProjectAdvanceAnalyticsChartEndpoint.as_view(),
         name="project-advance-analytics-chart",
+    ),
+    # BlockWill fork — team throughput (completed work over a window)
+    path(
+        "workspaces/<str:slug>/analytics/throughput/",
+        ThroughputAnalyticsEndpoint.as_view(),
+        name="workspace-throughput-analytics",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/analytics/throughput/",
+        ThroughputAnalyticsEndpoint.as_view(),
+        name="project-throughput-analytics",
     ),
 ]

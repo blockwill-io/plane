@@ -207,6 +207,8 @@ from .analytic.base import (
     ProjectStatsEndpoint,
 )
 
+from .analytic.throughput import ThroughputAnalyticsEndpoint
+
 from .analytic.advance import (
     AdvanceAnalyticsEndpoint,
     AdvanceAnalyticsStatsEndpoint,

@@ -11,6 +11,7 @@ import type {
   TAnalyticsTabsBase,
   TAnalyticsGraphsBase,
   TAnalyticsFilterParams,
+  TThroughputResponse,
 } from "@plane/types";
 // services
 import { APIService } from "./api.service";
@@ -18,6 +19,18 @@ import { APIService } from "./api.service";
 export class AnalyticsService extends APIService {
   constructor() {
     super(API_BASE_URL);
+  }
+
+  /** BlockWill fork — completed work over a date window, per assignee. */
+  async getThroughput(
+    workspaceSlug: string,
+    params?: { start_date?: string; end_date?: string; project_ids?: string }
+  ): Promise<TThroughputResponse> {
+    return this.get(`/api/workspaces/${workspaceSlug}/analytics/throughput/`, { params })
+      .then((res) => res?.data)
+      .catch((err) => {
+        throw err?.response?.data;
+      });
   }
 
   async getAdvanceAnalytics<T extends IAnalyticsResponse>(
