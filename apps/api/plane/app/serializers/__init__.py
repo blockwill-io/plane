@@ -84,6 +84,7 @@ from .issue import (
     IssueListDetailSerializer,
 )
 
+from .milestone import MilestoneSerializer, MilestoneWriteSerializer, IssueMilestoneSerializer
 from .module import (
     ModuleDetailSerializer,
     ModuleWriteSerializer,
