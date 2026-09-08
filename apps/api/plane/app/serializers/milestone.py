@@ -26,6 +26,8 @@ class MilestoneSerializer(DynamicBaseSerializer):
     # Progress: populated by the view's queryset annotations.
     total_issues = serializers.IntegerField(read_only=True)
     completed_issues = serializers.IntegerField(read_only=True)
+    # linked work item ids (annotated by the view)
+    issue_ids = serializers.ListField(child=serializers.UUIDField(), read_only=True, required=False)
 
     class Meta:
         model = Milestone
@@ -39,6 +41,7 @@ class MilestoneSerializer(DynamicBaseSerializer):
             "workspace_id",
             "total_issues",
             "completed_issues",
+            "issue_ids",
             "external_source",
             "external_id",
             "created_at",

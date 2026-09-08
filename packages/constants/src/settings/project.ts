@@ -93,6 +93,13 @@ export const PROJECT_SETTINGS: Record<TProjectSettingsTabs, TProjectSettingsItem
     access: [EUserProjectRoles.ADMIN, EUserProjectRoles.MEMBER],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/labels/`,
   },
+  milestones: {
+    key: "milestones",
+    i18n_label: "Milestones",
+    href: `/milestones`,
+    access: [EUserProjectRoles.ADMIN, EUserProjectRoles.MEMBER],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/milestones/`,
+  },
   estimates: {
     key: "estimates",
     i18n_label: "common.estimates",
@@ -123,6 +130,7 @@ export const GROUPED_PROJECT_SETTINGS: Record<PROJECT_SETTINGS_CATEGORY, TProjec
   [PROJECT_SETTINGS_CATEGORY.WORK_STRUCTURE]: [
     PROJECT_SETTINGS["states"],
     PROJECT_SETTINGS["labels"],
+    PROJECT_SETTINGS["milestones"],
     PROJECT_SETTINGS["estimates"],
   ],
   [PROJECT_SETTINGS_CATEGORY.EXECUTION]: [PROJECT_SETTINGS["automations"]],

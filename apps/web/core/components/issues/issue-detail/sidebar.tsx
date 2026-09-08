@@ -6,6 +6,7 @@
 
 import { observer } from "mobx-react";
 // i18n
+import { Milestone as MilestoneIcon } from "lucide-react";
 import { useTranslation } from "@plane/i18n";
 // ui
 import {
@@ -40,6 +41,7 @@ import { IssueParentSelectRoot } from "@/components/issues/parent-select-root";
 import { SidebarPropertyListItem } from "@/components/common/layout/sidebar/property-list-item";
 import { IssueCycleSelect } from "./cycle-select";
 import { IssueLabel } from "./label";
+import { IssueMilestoneSelect } from "./milestone-select";
 import { IssueModuleSelect } from "./module-select";
 import type { TIssueOperations } from "./root";
 
@@ -228,6 +230,17 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
                 />
               </SidebarPropertyListItem>
             )}
+
+            {/* BlockWill fork: milestone */}
+            <SidebarPropertyListItem icon={MilestoneIcon} label="Milestone">
+              <IssueMilestoneSelect
+                className="h-7.5 w-full grow"
+                workspaceSlug={workspaceSlug}
+                projectId={projectId}
+                issueId={issueId}
+                disabled={!isEditable}
+              />
+            </SidebarPropertyListItem>
 
             <SidebarPropertyListItem icon={ParentPropertyIcon} label={t("common.parent")}>
               <IssueParentSelectRoot

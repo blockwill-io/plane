@@ -333,6 +333,11 @@ export const coreRoutes: RouteConfigEntry[] = [
               ":workspaceSlug/settings/projects/:projectId/labels",
               "./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/labels/page.tsx"
             ),
+            // Project Milestones (BlockWill fork)
+            route(
+              ":workspaceSlug/settings/projects/:projectId/milestones",
+              "./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/milestones/page.tsx"
+            ),
             // Project Estimates
             route(
               ":workspaceSlug/settings/projects/:projectId/estimates",

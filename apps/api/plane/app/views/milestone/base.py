@@ -1,6 +1,8 @@
 # BlockWill fork — milestone endpoints. See plane/db/models/milestone.py.
 
-from django.db.models import Count, IntegerField, OuterRef, Subquery, Value
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.contrib.postgres.fields import ArrayField
+from django.db.models import Count, IntegerField, OuterRef, Q, Subquery, UUIDField, Value
 from django.db.models.functions import Coalesce
 
 from rest_framework import status
@@ -51,6 +53,19 @@ class MilestoneViewSet(BaseViewSet):
             )
             .annotate(completed_issues=Coalesce(Subquery(completed_issues[:1]), Value(0, output_field=IntegerField())))
             .annotate(total_issues=Coalesce(Subquery(total_issues[:1]), Value(0, output_field=IntegerField())))
+            # The linked work item ids travel with the list response so the UI can
+            # map issue -> milestone in one request (no per-milestone fetches).
+            .annotate(
+                issue_ids=Coalesce(
+                    ArrayAgg(
+                        "milestone_issues__issue_id",
+                        distinct=True,
+                        filter=Q(milestone_issues__deleted_at__isnull=True)
+                        & Q(milestone_issues__issue__isnull=False),
+                    ),
+                    Value([], output_field=ArrayField(UUIDField())),
+                )
+            )
             .distinct()
         )
 
