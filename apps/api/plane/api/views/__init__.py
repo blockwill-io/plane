@@ -16,6 +16,12 @@ from .milestone import (
     MilestoneWorkItemAPIEndpoint,
 )
 
+from .estimate import (
+    ProjectEstimateAPIEndpoint,
+    EstimatePointListCreateAPIEndpoint,
+    EstimatePointDetailAPIEndpoint,
+)
+
 from .state import (
     StateListCreateAPIEndpoint,
     StateDetailAPIEndpoint,
