@@ -111,6 +111,16 @@ class GlobalSearchEndpoint(BaseAPIView):
             "project__identifier",
             "project_id",
             "workspace__slug",
+            # State so a result can show where the work item stands without
+            # opening it. Denormalised the same way IssueSearchEndpoint does it,
+            # so the row renders even before the state store has loaded.
+            "state__name",
+            "state__group",
+            "state__color",
+            # type_id has always been declared on IWorkspaceIssueSearchResult but
+            # was never selected here, so the identifier badge lost its work item
+            # type icon in these results.
+            "type_id",
         )[:100]
 
     def filter_cycles(self, query, slug, project_id, workspace_search):

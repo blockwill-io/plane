@@ -9,6 +9,7 @@ import { useParams } from "next/navigation";
 // plane imports
 import { WORKSPACE_DEFAULT_SEARCH_RESULT } from "@plane/constants";
 import type { IWorkspaceSearchResults } from "@plane/types";
+import { Loader } from "@plane/ui";
 import { cn } from "@plane/utils";
 // hooks
 import { usePowerK } from "@/hooks/store/use-power-k";
@@ -41,6 +42,11 @@ export function PowerKModalSearchMenu(props: Props) {
   const { workspaceSlug, projectId } = useParams();
   // store hooks
   const { togglePowerKModal } = usePowerK();
+  // `isSearching` only covers the request itself, and the request is debounced,
+  // so it stays false for the first 500ms after a keystroke. Treating the
+  // debounce gap as loading too means the skeleton appears the moment typing
+  // changes the query, rather than the stale result set sitting there.
+  const isAwaitingResults = isSearching || searchTerm.trim() !== debouncedSearchTerm.trim();
 
   useEffect(() => {
     if (activePage || !workspaceSlug) return;
@@ -86,7 +92,7 @@ export function PowerKModalSearchMenu(props: Props) {
         <div className="mt-4 flex items-center justify-between gap-2 px-4">
           <h5
             className={cn("text-11 text-primary", {
-              "animate-pulse": isSearching,
+              "animate-pulse": isAwaitingResults,
             })}
           >
             Search results for{" "}
@@ -101,7 +107,7 @@ export function PowerKModalSearchMenu(props: Props) {
       )}
 
       {/* Show empty state only when not loading and no results */}
-      {!isSearching && resultsCount === 0 && searchTerm.trim() !== "" && debouncedSearchTerm.trim() !== "" && (
+      {!isAwaitingResults && resultsCount === 0 && searchTerm.trim() !== "" && debouncedSearchTerm.trim() !== "" && (
         <PowerKModalNoSearchResultsCommand
           context={context}
           searchTerm={searchTerm}
@@ -109,7 +115,23 @@ export function PowerKModalSearchMenu(props: Props) {
         />
       )}
 
-      {searchTerm.trim() !== "" && <PowerKModalSearchResults closePalette={handleClosePalette} results={results} />}
+      {searchTerm.trim() !== "" &&
+        (isAwaitingResults ? (
+          // Without this the previous result set — or nothing at all on the
+          // first search — sat under the heading until the response landed,
+          // which read as "no matches" rather than "still looking".
+          <div className="flex flex-col gap-1 px-4 py-2" aria-busy="true" aria-live="polite">
+            <span className="sr-only">Searching</span>
+            <Loader className="flex flex-col gap-1">
+              <Loader.Item height="28px" />
+              <Loader.Item height="28px" />
+              <Loader.Item height="28px" />
+              <Loader.Item height="28px" />
+            </Loader>
+          </div>
+        ) : (
+          <PowerKModalSearchResults closePalette={handleClosePalette} results={results} />
+        ))}
     </>
   );
 }

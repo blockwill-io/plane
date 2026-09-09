@@ -10,6 +10,7 @@ import type { TUserPermissions } from "./enums";
 import type { TProjectMembership } from "./project";
 import type { IUser, IUserLite } from "./users";
 import type { TLoginMediums } from "./instance";
+import type { TStateGroups } from "./state";
 import type { IWorkspaceViewProps } from "./view-props";
 
 export enum EUserWorkspaceRoles {
@@ -135,6 +136,13 @@ export interface IWorkspaceIssueSearchResult {
   sequence_id: number;
   workspace__slug: string;
   type_id: string;
+  /**
+   * Denormalised state, so a search result can show where the work item stands.
+   * Nullable because a work item is not required to have a state.
+   */
+  state__name: string | null;
+  state__group: TStateGroups | null;
+  state__color: string | null;
 }
 
 export interface IWorkspacePageSearchResult {

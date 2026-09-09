@@ -31,7 +31,10 @@ export function PowerKModalCommandItem(props: Props) {
   return (
     <Command.Item value={value} onSelect={onSelect} className="focus:outline-none" disabled={isDisabled}>
       <div
-        className={cn("flex items-center gap-2 text-secondary", {
+        // min-w-0 flex-1 lets a label own the row's free space, so a long one
+        // truncates instead of shoving the shortcut badges, and trailing
+        // metadata inside a label can right-align.
+        className={cn("flex min-w-0 flex-1 items-center gap-2 text-secondary", {
           "opacity-70": isDisabled,
         })}
       >

@@ -6,7 +6,7 @@
 
 import { Briefcase, FileText, Layers, LayoutGrid } from "lucide-react";
 // plane imports
-import { ContrastIcon, DiceIcon } from "@plane/propel/icons";
+import { ContrastIcon, DiceIcon, StateGroupIcon } from "@plane/propel/icons";
 import type {
   IWorkspaceDefaultSearchResult,
   IWorkspaceIssueSearchResult,
@@ -40,15 +40,25 @@ export const POWER_K_SEARCH_RESULTS_GROUPS_MAP: Record<TPowerKSearchResultsKeys,
   },
   issue: {
     itemName: (workItem: IWorkspaceIssueSearchResult) => (
-      <div className="flex gap-2">
+      <div className="flex w-full min-w-0 items-center gap-2">
         <IssueIdentifier
           projectId={workItem.project_id}
           issueTypeId={workItem.type_id}
           projectIdentifier={workItem.project__identifier}
           issueSequenceId={workItem.sequence_id}
           size="xs"
-        />{" "}
-        {workItem.name}
+        />
+        <span className="truncate">{workItem.name}</span>
+        {workItem.state__name && (
+          <span className="ml-auto flex shrink-0 items-center gap-1.5 text-11 text-tertiary">
+            <StateGroupIcon
+              stateGroup={workItem.state__group ?? "backlog"}
+              color={workItem.state__color ?? undefined}
+              className="size-3.5 shrink-0"
+            />
+            {workItem.state__name}
+          </span>
+        )}
       </div>
     ),
     path: (workItem: IWorkspaceIssueSearchResult) =>
