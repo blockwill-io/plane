@@ -225,6 +225,9 @@ export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWor
       revalidateIfStale: true,
       revalidateOnFocus: true,
       revalidateOnReconnect: true,
+      // Slow background poll so an open work item keeps up with changes made
+      // elsewhere. SWR pauses this automatically while the tab is hidden.
+      refreshInterval: 60_000,
     }
   );
 

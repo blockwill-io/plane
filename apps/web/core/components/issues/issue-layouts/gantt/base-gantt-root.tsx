@@ -22,7 +22,7 @@ import { IssueGanttSidebar } from "@/components/gantt-chart/sidebar/issues/sideb
 import { useIssues } from "@/hooks/store/use-issues";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
-import { useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
+import { usePollWhileVisible, useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
 import { useTimeLineChart } from "@/hooks/use-timeline-chart";
 import { useBulkOperationStatus } from "@/hooks/use-bulk-operation-status";
@@ -72,6 +72,11 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
   // BlockWill fork: pull fresh data when the tab regains focus, so changes made
   // elsewhere (teammates, or automation on PR merge) don't sit stale.
   useRefreshOnFocus(
+    useCallback(() => {
+      fetchIssues("mutation", { canGroup: false, perPageCount: 100 }, viewId);
+    }, [fetchIssues, viewId])
+  );
+  usePollWhileVisible(
     useCallback(() => {
       fetchIssues("mutation", { canGroup: false, perPageCount: 100 }, viewId);
     }, [fetchIssues, viewId])

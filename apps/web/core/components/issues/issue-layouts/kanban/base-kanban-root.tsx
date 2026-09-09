@@ -21,7 +21,7 @@ import { useKanbanView } from "@/hooks/store/use-kanban-view";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useGroupIssuesDragNDrop } from "@/hooks/use-group-dragndrop";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
-import { useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
+import { usePollWhileVisible, useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
 // store
 // ui
@@ -104,6 +104,11 @@ export const BaseKanBanRoot = observer(function BaseKanBanRoot(props: IBaseKanBa
   // BlockWill fork: pull fresh data when the tab regains focus, so changes made
   // elsewhere (teammates, or automation on PR merge) don't sit stale.
   useRefreshOnFocus(
+    useCallback(() => {
+      fetchIssues("mutation", { canGroup: true, perPageCount: sub_group_by ? 10 : 30 }, viewId);
+    }, [fetchIssues, sub_group_by, viewId])
+  );
+  usePollWhileVisible(
     useCallback(() => {
       fetchIssues("mutation", { canGroup: true, perPageCount: sub_group_by ? 10 : 30 }, viewId);
     }, [fetchIssues, sub_group_by, viewId])

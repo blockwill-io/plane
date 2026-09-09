@@ -16,7 +16,7 @@ import { EIssueLayoutTypes } from "@plane/types";
 import { useIssues } from "@/hooks/store/use-issues";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
-import { useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
+import { usePollWhileVisible, useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
 // local imports
 import { IssueLayoutHOC } from "../issue-layout-HOC";
@@ -75,6 +75,11 @@ export const BaseSpreadsheetRoot = observer(function BaseSpreadsheetRoot(props: 
   // BlockWill fork: pull fresh data when the tab regains focus, so changes made
   // elsewhere (teammates, or automation on PR merge) don't sit stale.
   useRefreshOnFocus(
+    useCallback(() => {
+      fetchIssues("mutation", { canGroup: false, perPageCount: 100 }, viewId);
+    }, [fetchIssues, viewId])
+  );
+  usePollWhileVisible(
     useCallback(() => {
       fetchIssues("mutation", { canGroup: false, perPageCount: 100 }, viewId);
     }, [fetchIssues, viewId])

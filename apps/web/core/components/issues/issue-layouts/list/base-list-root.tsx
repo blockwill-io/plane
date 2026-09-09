@@ -20,7 +20,7 @@ import { useUserPermissions } from "@/hooks/store/user";
 // hooks
 import { useGroupIssuesDragNDrop } from "@/hooks/use-group-dragndrop";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
-import { useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
+import { usePollWhileVisible, useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
 // components
 import { IssueLayoutHOC } from "../issue-layout-HOC";
@@ -95,6 +95,11 @@ export const BaseListRoot = observer(function BaseListRoot(props: IBaseListRoot)
   // BlockWill fork: pull fresh data when the tab regains focus, so changes made
   // elsewhere (teammates, or automation on PR merge) don't sit stale.
   useRefreshOnFocus(
+    useCallback(() => {
+      fetchIssues("mutation", { canGroup: true, perPageCount: group_by ? 50 : 100 }, viewId);
+    }, [fetchIssues, group_by, viewId])
+  );
+  usePollWhileVisible(
     useCallback(() => {
       fetchIssues("mutation", { canGroup: true, perPageCount: group_by ? 50 : 100 }, viewId);
     }, [fetchIssues, group_by, viewId])
