@@ -21,6 +21,7 @@ import { useUserPermissions } from "@/hooks/store/user";
 import { useGroupIssuesDragNDrop } from "@/hooks/use-group-dragndrop";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
+import { usePollWhileVisible, useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
 // components
 import { IssueLayoutHOC } from "../issue-layout-HOC";
 import { List } from "./default";
@@ -63,6 +64,7 @@ export const BaseListRoot = observer(function BaseListRoot(props: IBaseListRoot)
   const {
     fetchIssues,
     fetchNextIssues,
+    refreshIssues,
     quickAddIssue,
     updateIssue,
     removeIssue,
@@ -70,6 +72,15 @@ export const BaseListRoot = observer(function BaseListRoot(props: IBaseListRoot)
     archiveIssue,
     restoreIssue,
   } = useIssuesActions(storeType);
+
+  // BlockWill fork: keep the list current without a manual reload. Both are
+  // silent — the store now keeps the rendered page until the response lands.
+  useRefreshOnFocus(useCallback(() => {
+    refreshIssues?.();
+  }, [refreshIssues]));
+  usePollWhileVisible(useCallback(() => {
+    refreshIssues?.();
+  }, [refreshIssues]));
   // mobx store
   const { allowPermissions } = useUserPermissions();
   const { issueMap } = useIssues();

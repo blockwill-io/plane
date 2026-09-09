@@ -108,7 +108,7 @@ export class ProjectIssues extends BaseIssuesStore implements IProjectIssues {
       // set loader and clear store
       runInAction(() => {
         this.setLoader(loadType);
-        this.clear(!isExistingPaginationOptions); // clear while fetching from server.
+        this.clear(!isExistingPaginationOptions, isExistingPaginationOptions); // a refetch of the current page keeps it rendered until the response lands
       });
 
       // get params from pagination options

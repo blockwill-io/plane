@@ -23,6 +23,7 @@ import { useIssues } from "@/hooks/store/use-issues";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
+import { usePollWhileVisible, useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
 import { useTimeLineChart } from "@/hooks/use-timeline-chart";
 import { useBulkOperationStatus } from "@/hooks/use-bulk-operation-status";
 // local imports
@@ -51,7 +52,16 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
 
   const storeType = useIssueStoreType() as GanttStoreType;
   const { issues, issuesFilter } = useIssues(storeType);
-  const { fetchIssues, fetchNextIssues, updateIssue, quickAddIssue } = useIssuesActions(storeType);
+  const { fetchIssues, fetchNextIssues, refreshIssues, updateIssue, quickAddIssue } = useIssuesActions(storeType);
+
+  // BlockWill fork: keep the list current without a manual reload. Both are
+  // silent — the store now keeps the rendered page until the response lands.
+  useRefreshOnFocus(useCallback(() => {
+    refreshIssues?.();
+  }, [refreshIssues]));
+  usePollWhileVisible(useCallback(() => {
+    refreshIssues?.();
+  }, [refreshIssues]));
   const { initGantt } = useTimeLineChart(GANTT_TIMELINE_TYPE.ISSUE);
   // store hooks
   const { allowPermissions } = useUserPermissions();

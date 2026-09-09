@@ -63,7 +63,7 @@ export interface IBaseIssuesStore {
 
   //actions
   removeIssue: (workspaceSlug: string, projectId: string, issueId: string) => Promise<void>;
-  clear(shouldClearPaginationOptions?: boolean): void;
+  clear(shouldClearPaginationOptions?: boolean, shouldPreserveRenderedIssues?: boolean): void;
   // helper methods
   getIssueIds: (groupId?: string, subGroupId?: string) => string[] | undefined;
   issuesSortWithOrderBy(issueIds: string[], key: Partial<TIssueOrderByOptions>): string[];
@@ -1157,15 +1157,26 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
   /**
    * Method called to clear out the current store
    */
-  clear(shouldClearPaginationOptions = true) {
+  clear(shouldClearPaginationOptions = true, shouldPreserveRenderedIssues = false) {
     runInAction(() => {
-      this.groupedIssueIds = undefined;
-      this.issuePaginationData = {};
-      this.groupedIssueCount = {};
+      // Wiping these before the request is what blanks the layout into
+      // skeletons, because the HOC treats an undefined count as "still loading".
+      // A refetch of the page already on screen passes shouldPreserveRenderedIssues
+      // so the current page stays rendered until the response replaces it.
+      // Correctness does not depend on this clear: onfetchIssues clears and
+      // repopulates inside a single runInAction when the response lands, so the
+      // list still ends up exactly matching the server rather than merging.
+      if (!shouldPreserveRenderedIssues) {
+        this.groupedIssueIds = undefined;
+        this.issuePaginationData = {};
+        this.groupedIssueCount = {};
+      }
       if (shouldClearPaginationOptions) {
         this.paginationOptions = undefined;
       }
     });
+    // Aborting still happens either way, so a newer fetch always supersedes an
+    // in-flight one and responses cannot land out of order.
     this.controller.abort();
     this.controller = new AbortController();
   }

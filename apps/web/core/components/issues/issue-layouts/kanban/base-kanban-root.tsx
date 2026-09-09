@@ -22,6 +22,7 @@ import { useUserPermissions } from "@/hooks/store/user";
 import { useGroupIssuesDragNDrop } from "@/hooks/use-group-dragndrop";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
+import { usePollWhileVisible, useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
 // store
 // ui
 // types
@@ -73,6 +74,7 @@ export const BaseKanBanRoot = observer(function BaseKanBanRoot(props: IBaseKanBa
   const {
     fetchIssues,
     fetchNextIssues,
+    refreshIssues,
     quickAddIssue,
     updateIssue,
     removeIssue,
@@ -81,6 +83,15 @@ export const BaseKanBanRoot = observer(function BaseKanBanRoot(props: IBaseKanBa
     restoreIssue,
     updateFilters,
   } = useIssuesActions(storeType);
+
+  // BlockWill fork: keep the list current without a manual reload. Both are
+  // silent — the store now keeps the rendered page until the response lands.
+  useRefreshOnFocus(useCallback(() => {
+    refreshIssues?.();
+  }, [refreshIssues]));
+  usePollWhileVisible(useCallback(() => {
+    refreshIssues?.();
+  }, [refreshIssues]));
 
   const deleteAreaRef = useRef<HTMLDivElement | null>(null);
   const [isDragOverDelete, setIsDragOverDelete] = useState(false);

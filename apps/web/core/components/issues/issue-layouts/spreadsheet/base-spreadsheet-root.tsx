@@ -17,6 +17,7 @@ import { useIssues } from "@/hooks/store/use-issues";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
+import { usePollWhileVisible, useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
 // local imports
 import { IssueLayoutHOC } from "../issue-layout-HOC";
 import type { IQuickActionProps, TRenderQuickActions } from "../list/list-view-types";
@@ -50,6 +51,7 @@ export const BaseSpreadsheetRoot = observer(function BaseSpreadsheetRoot(props: 
   const {
     fetchIssues,
     fetchNextIssues,
+    refreshIssues,
     quickAddIssue,
     updateIssue,
     removeIssue,
@@ -58,6 +60,15 @@ export const BaseSpreadsheetRoot = observer(function BaseSpreadsheetRoot(props: 
     restoreIssue,
     updateFilters,
   } = useIssuesActions(storeType);
+
+  // BlockWill fork: keep the list current without a manual reload. Both are
+  // silent — the store now keeps the rendered page until the response lands.
+  useRefreshOnFocus(useCallback(() => {
+    refreshIssues?.();
+  }, [refreshIssues]));
+  usePollWhileVisible(useCallback(() => {
+    refreshIssues?.();
+  }, [refreshIssues]));
   // derived values
   const { enableInlineEditing, enableQuickAdd, enableIssueCreation } = issues?.viewFlags || {};
   // user role validation
