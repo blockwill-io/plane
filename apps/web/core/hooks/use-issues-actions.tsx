@@ -30,6 +30,12 @@ export interface IssueActions {
     viewId?: string
   ) => Promise<TIssuesResponse | undefined>;
   fetchNextIssues: (groupId?: string, subGroupId?: string) => Promise<TIssuesResponse | undefined>;
+  /**
+   * BlockWill fork: refetch the current page in place, keeping the existing
+   * pagination and WITHOUT clearing the store first. A background refresh must
+   * not blank the list into skeletons the way fetchIssues does.
+   */
+  refreshIssues?: () => Promise<TIssuesResponse | undefined | void>;
   removeIssue: (projectId: string | undefined | null, issueId: string) => Promise<void>;
   createIssue?: (projectId: string | undefined | null, data: Partial<TIssue>) => Promise<TIssue | undefined>;
   quickAddIssue?: (projectId: string | undefined | null, data: TIssue) => Promise<TIssue | undefined>;
@@ -94,6 +100,11 @@ const useProjectIssueActions = () => {
     },
     [issues.fetchIssues, workspaceSlug, projectId]
   );
+  // BlockWill fork: in-place background refresh (no clear -> no skeleton flash)
+  const refreshIssues = useCallback(async () => {
+    if (!workspaceSlug || !projectId) return;
+    return issues.fetchIssuesWithExistingPagination(workspaceSlug.toString(), projectId.toString(), "mutation");
+  }, [issues, workspaceSlug, projectId]);
   const fetchNextIssues = useCallback(
     async (groupId?: string, subGroupId?: string) => {
       if (!workspaceSlug || !projectId) return;
@@ -150,6 +161,7 @@ const useProjectIssueActions = () => {
     () => ({
       fetchIssues,
       fetchNextIssues,
+      refreshIssues,
       createIssue,
       quickAddIssue,
       updateIssue,
@@ -157,7 +169,7 @@ const useProjectIssueActions = () => {
       archiveIssue,
       updateFilters,
     }),
-    [fetchIssues, fetchNextIssues, createIssue, quickAddIssue, updateIssue, removeIssue, archiveIssue, updateFilters]
+    [fetchIssues, fetchNextIssues, refreshIssues, createIssue, quickAddIssue, updateIssue, removeIssue, archiveIssue, updateFilters]
   );
 };
 
@@ -176,6 +188,11 @@ const useProjectEpicsActions = () => {
     },
     [issues.fetchIssues, workspaceSlug, projectId]
   );
+  // BlockWill fork: in-place background refresh (no clear -> no skeleton flash)
+  const refreshIssues = useCallback(async () => {
+    if (!workspaceSlug || !projectId) return;
+    return issues.fetchIssuesWithExistingPagination(workspaceSlug.toString(), projectId.toString(), "mutation");
+  }, [issues, workspaceSlug, projectId]);
   const fetchNextIssues = useCallback(
     async (groupId?: string, subGroupId?: string) => {
       if (!workspaceSlug || !projectId) return;
@@ -232,6 +249,7 @@ const useProjectEpicsActions = () => {
     () => ({
       fetchIssues,
       fetchNextIssues,
+      refreshIssues,
       createIssue,
       quickAddIssue,
       updateIssue,
@@ -239,7 +257,7 @@ const useProjectEpicsActions = () => {
       archiveIssue,
       updateFilters,
     }),
-    [fetchIssues, fetchNextIssues, createIssue, quickAddIssue, updateIssue, removeIssue, archiveIssue, updateFilters]
+    [fetchIssues, fetchNextIssues, refreshIssues, createIssue, quickAddIssue, updateIssue, removeIssue, archiveIssue, updateFilters]
   );
 };
 
@@ -259,6 +277,11 @@ const useCycleIssueActions = () => {
     },
     [issues.fetchIssues, workspaceSlug, projectId]
   );
+  // BlockWill fork: in-place background refresh (no clear -> no skeleton flash)
+  const refreshIssues = useCallback(async () => {
+    if (!workspaceSlug || !projectId || !cycleId) return;
+    return issues.fetchIssuesWithExistingPagination(workspaceSlug.toString(), projectId.toString(), "mutation", cycleId.toString());
+  }, [issues, workspaceSlug, projectId, cycleId]);
   const fetchNextIssues = useCallback(
     async (groupId?: string, subGroupId?: string) => {
       if (!workspaceSlug || !projectId || !cycleId) return;
@@ -328,6 +351,7 @@ const useCycleIssueActions = () => {
     () => ({
       fetchIssues,
       fetchNextIssues,
+      refreshIssues,
       createIssue,
       quickAddIssue,
       updateIssue,
@@ -366,6 +390,11 @@ const useModuleIssueActions = () => {
     },
     [issues.fetchIssues, workspaceSlug, projectId]
   );
+  // BlockWill fork: in-place background refresh (no clear -> no skeleton flash)
+  const refreshIssues = useCallback(async () => {
+    if (!workspaceSlug || !projectId || !moduleId) return;
+    return issues.fetchIssuesWithExistingPagination(workspaceSlug.toString(), projectId.toString(), "mutation", moduleId.toString());
+  }, [issues, workspaceSlug, projectId, moduleId]);
   const fetchNextIssues = useCallback(
     async (groupId?: string, subGroupId?: string) => {
       if (!workspaceSlug || !projectId || !moduleId) return;
@@ -435,6 +464,7 @@ const useModuleIssueActions = () => {
     () => ({
       fetchIssues,
       fetchNextIssues,
+      refreshIssues,
       createIssue,
       quickAddIssue,
       updateIssue,
@@ -543,6 +573,17 @@ const useProjectViewIssueActions = () => {
     },
     [issues.fetchIssues, workspaceSlug, projectId]
   );
+
+  // BlockWill fork: in-place background refresh (no clear -> no skeleton flash)
+  const refreshIssues = useCallback(async () => {
+    if (!workspaceSlug || !projectId || !viewId) return;
+    return issues.fetchIssuesWithExistingPagination(
+      workspaceSlug.toString(),
+      projectId.toString(),
+      viewId.toString(),
+      "mutation"
+    );
+  }, [issues, workspaceSlug, projectId, viewId]);
   const fetchNextIssues = useCallback(
     async (groupId?: string, subGroupId?: string) => {
       if (!workspaceSlug || !projectId || !viewId) return;
@@ -599,6 +640,7 @@ const useProjectViewIssueActions = () => {
     () => ({
       fetchIssues,
       fetchNextIssues,
+      refreshIssues,
       createIssue,
       quickAddIssue,
       updateIssue,
@@ -606,7 +648,7 @@ const useProjectViewIssueActions = () => {
       archiveIssue,
       updateFilters,
     }),
-    [fetchIssues, fetchNextIssues, createIssue, quickAddIssue, updateIssue, removeIssue, archiveIssue, updateFilters]
+    [fetchIssues, fetchNextIssues, refreshIssues, createIssue, quickAddIssue, updateIssue, removeIssue, archiveIssue, updateFilters]
   );
 };
 
@@ -625,6 +667,11 @@ const useArchivedIssueActions = () => {
     },
     [issues.fetchIssues, workspaceSlug, projectId]
   );
+  // BlockWill fork: in-place background refresh (no clear -> no skeleton flash)
+  const refreshIssues = useCallback(async () => {
+    if (!workspaceSlug || !projectId) return;
+    return issues.fetchIssuesWithExistingPagination(workspaceSlug.toString(), projectId.toString(), "mutation");
+  }, [issues, workspaceSlug, projectId]);
   const fetchNextIssues = useCallback(
     async (groupId?: string, subGroupId?: string) => {
       if (!workspaceSlug || !projectId) return;
@@ -660,11 +707,12 @@ const useArchivedIssueActions = () => {
     () => ({
       fetchIssues,
       fetchNextIssues,
+      refreshIssues,
       removeIssue,
       restoreIssue,
       updateFilters,
     }),
-    [fetchIssues, fetchNextIssues, removeIssue, restoreIssue, updateFilters]
+    [fetchIssues, fetchNextIssues, refreshIssues, removeIssue, restoreIssue, updateFilters]
   );
 };
 
