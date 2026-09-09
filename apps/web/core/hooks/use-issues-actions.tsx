@@ -410,6 +410,7 @@ const useCycleIssueActions = () => {
     [
       fetchIssues,
       fetchNextIssues,
+      refreshIssues,
       createIssue,
       quickAddIssue,
       updateIssue,
@@ -524,7 +525,7 @@ const useModuleIssueActions = () => {
       archiveIssue,
       updateFilters,
     }),
-    [fetchIssues, createIssue, updateIssue, removeIssue, removeIssueFromView, archiveIssue, updateFilters]
+    [fetchIssues, fetchNextIssues, refreshIssues, createIssue, updateIssue, removeIssue, removeIssueFromView, archiveIssue, updateFilters]
   );
 };
 
@@ -556,6 +557,11 @@ const useProfileIssueActions = () => {
     },
     [issues.fetchIssues, workspaceSlug, userId]
   );
+  // BlockWill fork: in-place background refresh (no clear -> no skeleton flash)
+  const refreshIssues = useCallback(async () => {
+    if (!workspaceSlug || !userId) return;
+    return issues.fetchIssuesWithExistingPagination(workspaceSlug.toString(), userId.toString(), "mutation");
+  }, [issues, workspaceSlug, userId]);
 
   const createIssue = useCallback(
     async (projectId: string | undefined | null, data: Partial<TIssue>) => {
@@ -564,7 +570,7 @@ const useProfileIssueActions = () => {
     },
     [issues.createIssue, workspaceSlug]
   );
-  const revalidateMembership = useMembershipRevalidation(undefined);
+  const revalidateMembership = useMembershipRevalidation(refreshIssues);
   const updateIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string, data: Partial<TIssue>) => {
       if (!workspaceSlug || !projectId) return;
@@ -602,13 +608,14 @@ const useProfileIssueActions = () => {
     () => ({
       fetchIssues,
       fetchNextIssues,
+      refreshIssues,
       createIssue,
       updateIssue,
       removeIssue,
       archiveIssue,
       updateFilters,
     }),
-    [fetchIssues, createIssue, updateIssue, removeIssue, archiveIssue, updateFilters]
+    [fetchIssues, refreshIssues, createIssue, updateIssue, removeIssue, archiveIssue, updateFilters]
   );
 };
 
@@ -841,12 +848,13 @@ const useGlobalIssueActions = () => {
     () => ({
       fetchIssues,
       fetchNextIssues,
+      refreshIssues,
       createIssue,
       updateIssue,
       removeIssue,
       updateFilters,
     }),
-    [createIssue, updateIssue, removeIssue, updateFilters]
+    [fetchIssues, refreshIssues, createIssue, updateIssue, removeIssue, updateFilters]
   );
 };
 
