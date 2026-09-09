@@ -13,7 +13,9 @@
 # exactly, because the two must agree or the list will show something the
 # server did not do:
 #   - scalars (state_id, priority, dates, estimate) REPLACE
-#   - lists (assignee_ids, label_ids) APPEND, they never remove
+#   - lists (assignee_ids, label_ids) APPEND
+#   - remove_assignee_ids / remove_label_ids are the fork's other direction,
+#     and may be sent alongside the adds in the same request
 #
 # Deliberately NOT using Issue.objects.bulk_update() for the state change:
 # bulk_update() bypasses Model.save(), and save() is where _sync_completed_at
@@ -70,12 +72,10 @@ class IssueBulkOperationEndpoint(BaseAPIView):
 
         assignee_ids = [str(i) for i in (properties.get("assignee_ids") or [])]
         label_ids = [str(i) for i in (properties.get("label_ids") or [])]
+        remove_assignee_ids = {str(i) for i in (properties.get("remove_assignee_ids") or [])}
+        remove_label_ids = {str(i) for i in (properties.get("remove_label_ids") or [])}
 
-        issues = list(
-            Issue.objects.filter(
-                workspace__slug=slug, project_id=project_id, pk__in=issue_ids
-            ).prefetch_related("assignees", "labels")
-        )
+        issues = list(Issue.objects.filter(workspace__slug=slug, project_id=project_id, pk__in=issue_ids))
         if not issues:
             return Response({"error": "No matching work items"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -104,45 +104,23 @@ class IssueBulkOperationEndpoint(BaseAPIView):
                 # save(), not bulk_update() — see the module docstring.
                 issue.save(update_fields=changed_columns)
 
-            if assignee_ids:
-                before = {str(a.id) for a in issue.assignees.all()}
-                missing = [i for i in assignee_ids if i not in before]
-                if missing:
-                    IssueAssignee.objects.bulk_create(
-                        [
-                            IssueAssignee(
-                                issue=issue,
-                                assignee_id=member_id,
-                                project_id=project_id,
-                                workspace_id=issue.workspace_id,
-                                created_by_id=request.user.id,
-                            )
-                            for member_id in missing
-                        ],
-                        batch_size=10,
-                        ignore_conflicts=True,
+            if assignee_ids or remove_assignee_ids:
+                before = self._live_ids(IssueAssignee, issue, "assignee_id")
+                after = (before | set(assignee_ids)) - remove_assignee_ids
+                if after != before:
+                    self._apply_membership(
+                        IssueAssignee, issue, "assignee_id", before, after, project_id, request.user.id
                     )
-                    requested_data["assignee_ids"] = sorted(before | set(missing))
+                    requested_data["assignee_ids"] = sorted(after)
 
-            if label_ids:
-                before = {str(item.id) for item in issue.labels.all()}
-                missing = [i for i in label_ids if i not in before]
-                if missing:
-                    IssueLabel.objects.bulk_create(
-                        [
-                            IssueLabel(
-                                issue=issue,
-                                label_id=label_id,
-                                project_id=project_id,
-                                workspace_id=issue.workspace_id,
-                                created_by_id=request.user.id,
-                            )
-                            for label_id in missing
-                        ],
-                        batch_size=10,
-                        ignore_conflicts=True,
+            if label_ids or remove_label_ids:
+                before = self._live_ids(IssueLabel, issue, "label_id")
+                after = (before | set(label_ids)) - remove_label_ids
+                if after != before:
+                    self._apply_membership(
+                        IssueLabel, issue, "label_id", before, after, project_id, request.user.id
                     )
-                    requested_data["label_ids"] = sorted(before | set(missing))
+                    requested_data["label_ids"] = sorted(after)
 
             if not requested_data:
                 continue
@@ -161,6 +139,63 @@ class IssueBulkOperationEndpoint(BaseAPIView):
             )
 
         return Response({"updated": updated}, status=status.HTTP_200_OK)
+
+    def _live_ids(self, through_model, issue, field):
+        """Currently attached ids, excluding soft-deleted rows.
+
+        issue.assignees / issue.labels go through the M2M, which does NOT filter
+        on deleted_at, so a previously removed row still shows up there. Reading
+        the through model's default (soft-delete aware) manager is what the API's
+        own assignee_ids/label_ids annotations do, so this matches what the
+        client sees.
+        """
+        return {str(i) for i in through_model.objects.filter(issue=issue).values_list(field, flat=True)}
+
+    def _apply_membership(self, through_model, issue, field, before, after, project_id, user_id):
+        """Attach and detach through-model rows to match `after`.
+
+        Re-attaching needs care: a soft-deleted row still occupies the unique
+        constraint, so a plain create would be dropped by ignore_conflicts and
+        the id would silently never come back. Restore those rows instead, and
+        only create the ones with no row at all.
+        """
+        to_remove = before - after
+        if to_remove:
+            through_model.objects.filter(issue=issue, **{f"{field}__in": to_remove}).delete()
+
+        to_add = after - before
+        if not to_add:
+            return
+
+        restorable = set(
+            map(
+                str,
+                through_model.all_objects.filter(
+                    issue=issue, deleted_at__isnull=False, **{f"{field}__in": to_add}
+                ).values_list(field, flat=True),
+            )
+        )
+        if restorable:
+            through_model.all_objects.filter(
+                issue=issue, deleted_at__isnull=False, **{f"{field}__in": restorable}
+            ).update(deleted_at=None)
+
+        fresh = to_add - restorable
+        if fresh:
+            through_model.objects.bulk_create(
+                [
+                    through_model(
+                        issue=issue,
+                        project_id=project_id,
+                        workspace_id=issue.workspace_id,
+                        created_by_id=user_id,
+                        **{field: value},
+                    )
+                    for value in fresh
+                ],
+                batch_size=10,
+                ignore_conflicts=True,
+            )
 
     def _validate(self, slug, project_id, properties):
         """Every referenced object must belong to this project.
@@ -184,7 +219,9 @@ class IssueBulkOperationEndpoint(BaseAPIView):
         ).exists():
             return "Invalid estimate point for this project"
 
-        assignee_ids = properties.get("assignee_ids") or []
+        assignee_ids = list(properties.get("assignee_ids") or []) + list(
+            properties.get("remove_assignee_ids") or []
+        )
         if assignee_ids:
             valid = ProjectMember.objects.filter(
                 project_id=project_id,
@@ -195,7 +232,7 @@ class IssueBulkOperationEndpoint(BaseAPIView):
             if valid != len(set(map(str, assignee_ids))):
                 return "One or more assignees are not active members of this project"
 
-        label_ids = properties.get("label_ids") or []
+        label_ids = list(properties.get("label_ids") or []) + list(properties.get("remove_label_ids") or [])
         if label_ids:
             valid = Label.objects.filter(
                 project_id=project_id, workspace__slug=slug, id__in=label_ids

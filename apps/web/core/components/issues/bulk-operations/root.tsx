@@ -30,6 +30,7 @@ import { cn, renderFormattedPayloadDate } from "@plane/utils";
 import { DateDropdown } from "@/components/dropdowns/date";
 import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { PriorityDropdown } from "@/components/dropdowns/priority";
+import { IssuePropertyLabels } from "@/components/issues/issue-layouts/properties/labels";
 import { StateDropdown } from "@/components/dropdowns/state/dropdown";
 // hooks
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
@@ -71,6 +72,25 @@ export const IssueBulkOperationsRoot = observer(function IssueBulkOperationsRoot
       grouped[projectId] = [...(grouped[projectId] ?? []), issueId];
     }
     return grouped;
+  }, [selectedEntityIds, issueStore]);
+
+  /**
+   * Ids present on every selected work item. Showing the shared set is what
+   * makes the pickers mean something across a selection: ticking an option adds
+   * it everywhere, unticking one that everything already has removes it
+   * everywhere. Anything held by only some of the selection stays untouched.
+   */
+  const sharedIds = useMemo(() => {
+    const intersect = (key: "assignee_ids" | "label_ids") => {
+      let shared: string[] | undefined;
+      for (const issueId of selectedEntityIds) {
+        const ids = issueStore.getIssueById(issueId)?.[key] ?? [];
+        shared = shared === undefined ? [...ids] : shared.filter((id) => ids.includes(id));
+        if (shared.length === 0) break;
+      }
+      return shared ?? [];
+    };
+    return { assignees: intersect("assignee_ids"), labels: intersect("label_ids") };
   }, [selectedEntityIds, issueStore]);
 
   const projectIds = Object.keys(issueIdsByProject);
@@ -119,6 +139,22 @@ export const IssueBulkOperationsRoot = observer(function IssueBulkOperationsRoot
         }),
       `${selectedCount} work ${selectedCount === 1 ? "item" : "items"} updated.`
     );
+
+  /** Turn a picker's new value into explicit adds and removes. */
+  const handleListChange = (
+    next: string[],
+    shared: string[],
+    addKey: "assignee_ids" | "label_ids",
+    removeKey: "remove_assignee_ids" | "remove_label_ids"
+  ) => {
+    const added = next.filter((id) => !shared.includes(id));
+    const removed = shared.filter((id) => !next.includes(id));
+    if (!added.length && !removed.length) return;
+    handleUpdate({
+      ...(added.length ? { [addKey]: added } : {}),
+      ...(removed.length ? { [removeKey]: removed } : {}),
+    });
+  };
 
   const handleArchive = () =>
     runPerProject(
@@ -194,13 +230,26 @@ export const IssueBulkOperationsRoot = observer(function IssueBulkOperationsRoot
             {singleProjectId && (
               <MemberDropdown
                 projectId={singleProjectId}
-                value={[]}
-                onChange={(assigneeIds: string[]) => handleUpdate({ assignee_ids: assigneeIds })}
+                value={sharedIds.assignees}
+                onChange={(assigneeIds: string[]) =>
+                  handleListChange(assigneeIds, sharedIds.assignees, "assignee_ids", "remove_assignee_ids")
+                }
                 multiple
                 buttonVariant="border-with-text"
                 placeholder="Assignees"
                 disabled={isSubmitting}
               />
+            )}
+
+            {singleProjectId && (
+              <IssuePropertyLabels
+                projectId={singleProjectId}
+                value={sharedIds.labels}
+                onChange={(labelIds: string[]) =>
+                  handleListChange(labelIds, sharedIds.labels, "label_ids", "remove_label_ids")
+                }
+                disabled={isSubmitting}
+                placeholderText="Labels"              />
             )}
 
             <DateDropdown

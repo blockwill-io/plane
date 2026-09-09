@@ -23,6 +23,7 @@ import type {
   TIssuePaginationData,
   TGroupedIssueCount,
   TPaginationData,
+  TBulkIssueProperties,
   TBulkOperationsPayload,
   IBlockUpdateDependencyData,
 } from "@plane/types";
@@ -731,19 +732,39 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
         Object.keys(data.properties).forEach((key) => {
           const property = key as keyof TBulkOperationsPayload["properties"];
           const propertyValue = data.properties[property];
+          // BlockWill fork: remove_* keys are not work item fields — applying
+          // them literally would write junk onto the issue. Each one subtracts
+          // from the field it names instead.
+          const removalTarget =
+            property === "remove_assignee_ids"
+              ? "assignee_ids"
+              : property === "remove_label_ids"
+                ? "label_ids"
+                : undefined;
+          if (removalTarget && Array.isArray(propertyValue)) {
+            const existingValue = issueBeforeUpdate[removalTarget];
+            const currentIds = Array.isArray(existingValue) ? existingValue : [];
+            this.rootIssueStore.issues.updateIssue(issueId, {
+              [removalTarget]: currentIds.filter((id) => !propertyValue.includes(id)),
+            });
+            return;
+          }
+          // Past the removal branch every remaining key is a real work item
+          // field, which the remove_* keys are not.
+          const issueProperty = property as keyof TBulkIssueProperties;
           // update root issue map properties
           if (Array.isArray(propertyValue)) {
             // if property value is array, append it to the existing values
-            const existingValue = issueBeforeUpdate[property];
+            const existingValue = issueBeforeUpdate[issueProperty];
             // convert existing value to an array
             const newExistingValue = Array.isArray(existingValue) ? existingValue : [];
             this.rootIssueStore.issues.updateIssue(issueId, {
-              [property]: uniq([...newExistingValue, ...propertyValue]),
+              [issueProperty]: uniq([...newExistingValue, ...propertyValue]),
             });
           } else {
             // if property value is not an array, simply update the value
             this.rootIssueStore.issues.updateIssue(issueId, {
-              [property]: propertyValue,
+              [issueProperty]: propertyValue,
             });
           }
         });

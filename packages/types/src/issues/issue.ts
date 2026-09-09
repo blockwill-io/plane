@@ -150,9 +150,20 @@ export type TBulkIssueProperties = Pick<
   | "estimate_point"
 >;
 
+/**
+ * BlockWill fork: assignee_ids and label_ids append rather than replace, which
+ * makes bulk removal impossible to express. These carry the other direction.
+ * Add and remove may be sent together — a single toggle in the bulk bar can
+ * both add and remove in one request.
+ */
+export type TBulkIssueRemovals = {
+  remove_assignee_ids: string[];
+  remove_label_ids: string[];
+};
+
 export type TBulkOperationsPayload = {
   issue_ids: string[];
-  properties: Partial<TBulkIssueProperties>;
+  properties: Partial<TBulkIssueProperties> & Partial<TBulkIssueRemovals>;
 };
 
 export type TWorkItemWidgets = "sub-work-items" | "relations" | "links" | "attachments";
