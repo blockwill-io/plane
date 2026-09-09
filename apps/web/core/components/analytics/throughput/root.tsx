@@ -18,6 +18,8 @@ import { Loader } from "@plane/ui";
 import { cn, renderFormattedDate } from "@plane/utils";
 // components
 import AnalyticsWrapper from "../analytics-wrapper";
+// hooks
+import { useAnalytics } from "@/hooks/store/use-analytics";
 // services
 import { AnalyticsService } from "@/services/analytics.service";
 
@@ -105,9 +107,12 @@ const AssigneeRow = observer(function AssigneeRow(props: {
   );
 });
 
-function Throughput() {
+const Throughput = observer(function Throughput() {
   const { workspaceSlug } = useParams();
   const slug = workspaceSlug?.toString() ?? "";
+  // the project picker in the analytics header is shared across tabs
+  const { selectedProjects } = useAnalytics();
+  const projectIds = selectedProjects?.length ? selectedProjects.join(",") : undefined;
   // states
   const [rangeKey, setRangeKey] = useState<string>("7d");
   const [customStart, setCustomStart] = useState<string>(daysAgo(30));
@@ -125,11 +130,15 @@ function Throughput() {
   );
 
   const { data, isLoading, error } = useSWR(
-    slug ? `throughput-${slug}-${start_date}-${end_date}` : null,
+    slug ? `throughput-${slug}-${start_date}-${end_date}-${projectIds ?? "all"}` : null,
     slug
       ? async () => {
           try {
-            return await analyticsService.getThroughput(slug, { start_date, end_date });
+            return await analyticsService.getThroughput(slug, {
+              start_date,
+              end_date,
+              ...(projectIds ? { project_ids: projectIds } : {}),
+            });
           } catch (err) {
             // Surface the reason rather than letting the UI fall back to "0",
             // which reads as "nothing was completed" and hides the failure.
@@ -264,6 +273,6 @@ function Throughput() {
       </div>
     </AnalyticsWrapper>
   );
-}
+});
 
 export { Throughput };
