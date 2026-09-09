@@ -206,19 +206,37 @@ export const ExtendedSidebarItem = observer(function ExtendedSidebarItem(props: 
                 <UpgradeBadge />
               </div>
             )}
+            {/* A real button with padding: the bare icon was a 14px hit target next
+                to a flex-grow link, so a near-miss navigated away instead of pinning. */}
             {isPinned ? (
               <Tooltip tooltipContent="Unpin">
-                <PinOff
-                  className="size-3.5 flex-shrink-0 text-placeholder outline-none hover:text-tertiary"
-                  onClick={() => unPinNavigationItem(item.key)}
-                />
+                <button
+                  type="button"
+                  aria-label={`Unpin ${t(item.labelTranslationKey)}`}
+                  className="flex flex-shrink-0 items-center justify-center rounded p-1 text-placeholder outline-none hover:bg-layer-2-hover hover:text-tertiary"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    unPinNavigationItem(item.key);
+                  }}
+                >
+                  <PinOff className="size-3.5" />
+                </button>
               </Tooltip>
             ) : (
               <Tooltip tooltipContent="Pin">
-                <Pin
-                  className="size-3.5 flex-shrink-0 text-placeholder outline-none hover:text-tertiary"
-                  onClick={() => pinNavigationItem(item.key)}
-                />
+                <button
+                  type="button"
+                  aria-label={`Pin ${t(item.labelTranslationKey)}`}
+                  className="flex flex-shrink-0 items-center justify-center rounded p-1 text-placeholder outline-none hover:bg-layer-2-hover hover:text-tertiary"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pinNavigationItem(item.key);
+                  }}
+                >
+                  <Pin className="size-3.5" />
+                </button>
               </Tooltip>
             )}
           </div>

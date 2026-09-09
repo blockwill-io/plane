@@ -124,9 +124,20 @@ function Throughput() {
     [isCustom, customStart, customEnd, preset.days]
   );
 
-  const { data, isLoading } = useSWR(
+  const { data, isLoading, error } = useSWR(
     slug ? `throughput-${slug}-${start_date}-${end_date}` : null,
-    slug ? () => analyticsService.getThroughput(slug, { start_date, end_date }) : null
+    slug
+      ? async () => {
+          try {
+            return await analyticsService.getThroughput(slug, { start_date, end_date });
+          } catch (err) {
+            // Surface the reason rather than letting the UI fall back to "0",
+            // which reads as "nothing was completed" and hides the failure.
+            console.error("Throughput request failed", err);
+            throw err;
+          }
+        }
+      : null
   );
 
   const maxCount = useMemo(
@@ -189,7 +200,15 @@ function Throughput() {
           )}
         </div>
 
-        {isLoading ? (
+        {error ? (
+          <div className="rounded-lg border border-subtle-1 bg-layer-1 px-6 py-8 text-center">
+            <p className="text-body-sm-medium">Couldn&apos;t load throughput data.</p>
+            <p className="mt-1 text-body-xs-regular text-secondary">
+              The report didn&apos;t load, so this isn&apos;t a count of zero. Try reloading; if it keeps happening
+              the browser console has the reason.
+            </p>
+          </div>
+        ) : isLoading ? (
           <Loader className="flex flex-col gap-3">
             <Loader.Item height="90px" />
             <Loader.Item height="44px" />
