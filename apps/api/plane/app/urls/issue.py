@@ -22,6 +22,7 @@ from plane.app.views import (
     IssueViewSet,
     LabelViewSet,
     BulkArchiveIssuesEndpoint,
+    IssueBulkOperationEndpoint,
     DeletedIssuesListViewSet,
     IssuePaginatedViewSet,
     IssueDetailEndpoint,
@@ -99,6 +100,12 @@ urlpatterns = [
         "workspaces/<str:slug>/projects/<uuid:project_id>/bulk-archive-issues/",
         BulkArchiveIssuesEndpoint.as_view(),
         name="bulk-archive-issues",
+    ),
+    # BlockWill fork — the endpoint IssueService.bulkOperations() already calls
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/bulk-operation-issues/",
+        IssueBulkOperationEndpoint.as_view(),
+        name="bulk-operation-issues",
     ),
     ##
     path(
