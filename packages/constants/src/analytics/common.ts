@@ -170,6 +170,17 @@ export const ANALYTICS_X_AXIS_VALUES: { value: ChartXAxisProperty; label: string
     value: ChartXAxisProperty.CREATED_AT,
     label: "Created date",
   },
+  // BlockWill fork: both are supported by the chart backend but were never
+  // offered in the picker. "Project" enables cross-project matrices
+  // (e.g. project x state, or assignee x project).
+  {
+    value: ChartXAxisProperty.PROJECTS,
+    label: "Project",
+  },
+  {
+    value: ChartXAxisProperty.CREATED_BY,
+    label: "Created by",
+  },
 ];
 
 export const ANALYTICS_Y_AXIS_VALUES: { value: ChartYAxisMetric; label: string }[] = [

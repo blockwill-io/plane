@@ -219,9 +219,12 @@ export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWor
     ["peek-issue", peekIssue?.workspaceSlug, peekIssue?.projectId, peekIssue?.issueId],
     () => peekIssue && issueOperations.fetch(peekIssue.workspaceSlug, peekIssue.projectId, peekIssue.issueId),
     {
-      revalidateIfStale: false,
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
+      // BlockWill fork: revalidate when the tab regains focus or the connection
+      // returns, so an open work item reflects changes made elsewhere (a
+      // teammate, or automation closing it on PR merge) instead of sitting stale.
+      revalidateIfStale: true,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
     }
   );
 

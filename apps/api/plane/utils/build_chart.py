@@ -31,6 +31,8 @@ x_axis_mapper = {
     "CREATED_AT": "CREATED_AT",
     "COMPLETED_AT": "COMPLETED_AT",
     "CREATED_BY": "CREATED_BY",
+    # BlockWill fork: group work items by project (cross-project matrices)
+    "PROJECTS": "PROJECTS",
 }
 
 
@@ -72,6 +74,7 @@ def get_x_axis_field() -> Dict[str, Tuple[str, str, Optional[Dict[str, Any]]]]:
         "CREATED_AT": ("created_at__date", "created_at__date", None),
         "COMPLETED_AT": ("completed_at__date", "completed_at__date", None),
         "CREATED_BY": ("created_by_id", "created_by__display_name", None),
+        "PROJECTS": ("project_id", "project__name", None),
     }
 
 
