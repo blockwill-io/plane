@@ -5,7 +5,7 @@
  */
 
 /* eslint-disable react-hooks/exhaustive-deps */
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 // types
 import { useParams } from "next/navigation";
 import type { TSupportedFilterTypeForUpdate } from "@plane/constants";
@@ -85,6 +85,41 @@ export const useIssuesActions = (storeType: EIssuesStoreType): IssueActions => {
   }
 };
 
+/**
+ * BlockWill fork: after an edit, ask the server whether the work item still
+ * belongs in this list.
+ *
+ * Nothing evaluates filter membership on the client. getUpdateDetails only
+ * reasons about grouping, so an edit that makes an item stop matching the
+ * active filters leaves it sitting there — move a work item to Done under a
+ * "State Group is not any of Completed" filter and it stays until something
+ * refetches. Letting the server decide keeps every operator correct for free,
+ * including negation and OR groups, instead of reimplementing the filter
+ * engine here and risking hiding items that should be visible.
+ *
+ * The refetch is silent because the store keeps the rendered page until the
+ * response lands, and debounced so a burst of edits collapses into one request.
+ */
+const MEMBERSHIP_REVALIDATE_DELAY_MS = 500;
+
+const useMembershipRevalidation = (refreshIssues?: () => Promise<TIssuesResponse | undefined | void>) => {
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(
+    () => () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    },
+    []
+  );
+
+  return useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      refreshIssues?.();
+    }, MEMBERSHIP_REVALIDATE_DELAY_MS);
+  }, [refreshIssues]);
+};
+
 const useProjectIssueActions = () => {
   // router
   const { workspaceSlug: routerWorkspaceSlug, projectId: routerProjectId } = useParams();
@@ -127,12 +162,16 @@ const useProjectIssueActions = () => {
     },
     [issues.quickAddIssue, workspaceSlug]
   );
+  const revalidateMembership = useMembershipRevalidation(refreshIssues);
   const updateIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string, data: Partial<TIssue>) => {
       if (!workspaceSlug || !projectId) return;
-      return await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      const response = await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      // the edit may have made this work item stop matching the active filters
+      revalidateMembership();
+      return response;
     },
-    [issues.updateIssue, workspaceSlug]
+    [issues.updateIssue, workspaceSlug, revalidateMembership]
   );
   const removeIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string) => {
@@ -215,12 +254,16 @@ const useProjectEpicsActions = () => {
     },
     [issues.quickAddIssue, workspaceSlug]
   );
+  const revalidateMembership = useMembershipRevalidation(refreshIssues);
   const updateIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string, data: Partial<TIssue>) => {
       if (!workspaceSlug || !projectId) return;
-      return await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      const response = await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      // the edit may have made this work item stop matching the active filters
+      revalidateMembership();
+      return response;
     },
-    [issues.updateIssue, workspaceSlug]
+    [issues.updateIssue, workspaceSlug, revalidateMembership]
   );
   const removeIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string) => {
@@ -310,12 +353,16 @@ const useCycleIssueActions = () => {
     },
     [issues.quickAddIssue, workspaceSlug, cycleId]
   );
+  const revalidateMembership = useMembershipRevalidation(refreshIssues);
   const updateIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string, data: Partial<TIssue>) => {
       if (!workspaceSlug || !projectId) return;
-      return await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      const response = await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      // the edit may have made this work item stop matching the active filters
+      revalidateMembership();
+      return response;
     },
-    [issues.updateIssue, workspaceSlug]
+    [issues.updateIssue, workspaceSlug, revalidateMembership]
   );
   const removeIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string) => {
@@ -423,12 +470,16 @@ const useModuleIssueActions = () => {
     },
     [issues.quickAddIssue, workspaceSlug, moduleId]
   );
+  const revalidateMembership = useMembershipRevalidation(refreshIssues);
   const updateIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string, data: Partial<TIssue>) => {
       if (!workspaceSlug || !projectId) return;
-      return await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      const response = await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      // the edit may have made this work item stop matching the active filters
+      revalidateMembership();
+      return response;
     },
-    [issues.updateIssue, workspaceSlug]
+    [issues.updateIssue, workspaceSlug, revalidateMembership]
   );
   const removeIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string) => {
@@ -513,12 +564,16 @@ const useProfileIssueActions = () => {
     },
     [issues.createIssue, workspaceSlug]
   );
+  const revalidateMembership = useMembershipRevalidation(undefined);
   const updateIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string, data: Partial<TIssue>) => {
       if (!workspaceSlug || !projectId) return;
-      return await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      const response = await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      // the edit may have made this work item stop matching the active filters
+      revalidateMembership();
+      return response;
     },
-    [issues.updateIssue, workspaceSlug]
+    [issues.updateIssue, workspaceSlug, revalidateMembership]
   );
   const removeIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string) => {
@@ -606,12 +661,16 @@ const useProjectViewIssueActions = () => {
     },
     [issues.quickAddIssue, workspaceSlug]
   );
+  const revalidateMembership = useMembershipRevalidation(refreshIssues);
   const updateIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string, data: Partial<TIssue>) => {
       if (!workspaceSlug || !projectId) return;
-      return await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      const response = await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      // the edit may have made this work item stop matching the active filters
+      revalidateMembership();
+      return response;
     },
-    [issues.updateIssue, workspaceSlug]
+    [issues.updateIssue, workspaceSlug, revalidateMembership]
   );
   const removeIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string) => {
@@ -738,6 +797,11 @@ const useGlobalIssueActions = () => {
     },
     [issues.fetchIssues, workspaceSlug, globalViewId]
   );
+  // BlockWill fork: in-place background refresh (no clear -> no skeleton flash)
+  const refreshIssues = useCallback(async () => {
+    if (!workspaceSlug || !globalViewId) return;
+    return issues.fetchIssuesWithExistingPagination(workspaceSlug.toString(), globalViewId.toString(), "mutation");
+  }, [issues, workspaceSlug, globalViewId]);
 
   const createIssue = useCallback(
     async (projectId: string | undefined | null, data: Partial<TIssue>) => {
@@ -746,12 +810,16 @@ const useGlobalIssueActions = () => {
     },
     [issues.createIssue, workspaceSlug]
   );
+  const revalidateMembership = useMembershipRevalidation(refreshIssues);
   const updateIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string, data: Partial<TIssue>) => {
       if (!workspaceSlug || !projectId) return;
-      return await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      const response = await issues.updateIssue(workspaceSlug, projectId, issueId, data);
+      // the edit may have made this work item stop matching the active filters
+      revalidateMembership();
+      return response;
     },
-    [issues.updateIssue, workspaceSlug]
+    [issues.updateIssue, workspaceSlug, revalidateMembership]
   );
   const removeIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string) => {
@@ -809,6 +877,7 @@ const useWorkspaceDraftIssueActions = () => {
     },
     [issues, workspaceSlug]
   );
+  const revalidateMembership = useMembershipRevalidation(undefined);
   const updateIssue = useCallback(
     async (projectId: string | undefined | null, issueId: string, data: Partial<TIssue>) => {
       if (!workspaceSlug || !projectId) return;
