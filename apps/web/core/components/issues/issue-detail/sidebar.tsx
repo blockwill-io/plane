@@ -6,7 +6,7 @@
 
 import { observer } from "mobx-react";
 // i18n
-import { Milestone as MilestoneIcon } from "lucide-react";
+import { GitPullRequest, Milestone as MilestoneIcon } from "lucide-react";
 import { useTranslation } from "@plane/i18n";
 // ui
 import {
@@ -42,6 +42,7 @@ import { SidebarPropertyListItem } from "@/components/common/layout/sidebar/prop
 import { IssueCycleSelect } from "./cycle-select";
 import { IssueLabel } from "./label";
 import { IssueMilestoneSelect } from "./milestone-select";
+import { IssuePullRequests } from "./pull-requests";
 import { IssueModuleSelect } from "./module-select";
 import type { TIssueOperations } from "./root";
 
@@ -61,6 +62,7 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
   const { areEstimateEnabledByProjectId } = useProjectEstimates();
   const {
     issue: { getIssueById },
+    link: { getLinksByIssueId, getLinkById },
   } = useIssueDetail();
   const { getUserDetails } = useMember();
   const { getStateById } = useProjectState();
@@ -72,6 +74,12 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
   // derived values
   const projectDetails = getProjectById(issue.project_id);
   const stateDetails = getStateById(issue.state_id);
+
+  // BlockWill fork: only show the pull requests row when there is one to show,
+  // rather than adding a permanently empty property to every work item.
+  const hasPullRequests = (getLinksByIssueId(issueId) ?? []).some((linkId) =>
+    /github\.com\/[^/]+\/[^/]+\/pull\/\d+/i.test(getLinkById(linkId)?.url ?? "")
+  );
 
   const minDate = issue.start_date ? getDate(issue.start_date) : null;
   minDate?.setDate(minDate.getDate());
@@ -252,6 +260,17 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
                 disabled={!isEditable}
               />
             </SidebarPropertyListItem>
+
+            {/* BlockWill fork: pull requests linked by the github-bridge */}
+            {hasPullRequests && (
+              <SidebarPropertyListItem
+                icon={GitPullRequest}
+                label="Pull requests"
+                childrenClassName="flex-col items-start gap-0.5"
+              >
+                <IssuePullRequests issueId={issueId} />
+              </SidebarPropertyListItem>
+            )}
 
             <SidebarPropertyListItem icon={LabelPropertyIcon} label={t("common.labels")}>
               <IssueLabel
