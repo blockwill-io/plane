@@ -14,6 +14,11 @@ export type TMentionSuggestion = {
   id: string;
   subTitle?: string;
   title: string;
+  // BlockWill fork: carried onto the node so a work item mention can render and
+  // link itself without a lookup. Absent for every other entity type.
+  project_id?: string;
+  project_identifier?: string;
+  sequence_id?: string;
 };
 
 export type TMentionSection = {
@@ -22,10 +27,19 @@ export type TMentionSection = {
   items: TMentionSuggestion[];
 };
 
-export type TCallbackMentionComponentProps = Pick<TMentionSuggestion, "entity_identifier" | "entity_name">;
+export type TCallbackMentionComponentProps = Pick<
+  TMentionSuggestion,
+  "entity_identifier" | "entity_name" | "project_id" | "project_identifier" | "sequence_id"
+>;
 
 export type TMentionHandler = {
   getMentionedEntityDetails?: (entity_identifier: string) => { display_name: string } | undefined;
   renderComponent: (props: TCallbackMentionComponentProps) => React.ReactNode;
   searchCallback?: (query: string) => Promise<TMentionSection[]>;
+  /**
+   * BlockWill fork: search used by the "#" trigger, which mentions work items
+   * rather than people. Separate from searchCallback so "#" stays scoped to
+   * work items instead of listing every entity type.
+   */
+  workItemSearchCallback?: (query: string) => Promise<TMentionSection[]>;
 };

@@ -65,7 +65,7 @@ export const DocumentEditor = forwardRef(function DocumentEditor(
     projectId,
   });
   // use editor mention
-  const { fetchMentions } = useEditorMention({
+  const { fetchMentions, fetchWorkItemMentions } = useEditorMention({
     enableAdvancedMentions: true,
     searchEntity: editable ? async (payload) => await props.searchMentionCallback(payload) : async () => ({}),
   });
@@ -92,6 +92,12 @@ export const DocumentEditor = forwardRef(function DocumentEditor(
           if (!res) throw new Error("Failed in fetching mentions");
           return res;
         },
+// BlockWill fork: "#" mentions a work item
+workItemSearchCallback: async (query) => {
+  const res = await fetchWorkItemMentions(query);
+  if (!res) throw new Error("Failed in fetching work item mentions");
+  return res;
+},
         renderComponent: EditorMentionsRoot,
         getMentionedEntityDetails: (id: string) => ({ display_name: getUserDetails(id)?.display_name ?? "" }),
       }}

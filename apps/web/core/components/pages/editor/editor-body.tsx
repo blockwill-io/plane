@@ -106,7 +106,7 @@ export const PageEditorBody = observer(function PageEditorBody(props: Props) {
   } = page;
   const workspaceId = getWorkspaceBySlug(workspaceSlug)?.id ?? "";
   // use editor mention
-  const { fetchMentions } = useEditorMention({
+  const { fetchMentions, fetchWorkItemMentions } = useEditorMention({
     enableAdvancedMentions: true,
     searchEntity: handlers.fetchEntity,
   });
@@ -288,6 +288,12 @@ export const PageEditorBody = observer(function PageEditorBody(props: Props) {
                 if (!res) throw new Error("Failed in fetching mentions");
                 return res;
               },
+// BlockWill fork: "#" mentions a work item
+workItemSearchCallback: async (query) => {
+  const res = await fetchWorkItemMentions(query);
+  if (!res) throw new Error("Failed in fetching work item mentions");
+  return res;
+},
               // oxlint-disable-next-line no-shadow
               renderComponent: (props) => <EditorMentionsRoot {...props} />,
               getMentionedEntityDetails: (id: string) => ({ display_name: getUserDetails(id)?.display_name ?? "" }),

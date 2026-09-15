@@ -6,14 +6,25 @@
 
 // local imports
 import { EditorUserMention } from "./user";
+import { EditorWorkItemMention } from "./work-item";
 import type { TCallbackMentionComponentProps } from "@plane/editor";
 
 export function EditorMentionsRoot(props: TCallbackMentionComponentProps) {
-  const { entity_identifier, entity_name } = props;
+  const { entity_identifier, entity_name, project_id, project_identifier, sequence_id } = props;
 
   switch (entity_name) {
     case "user_mention":
       return <EditorUserMention id={entity_identifier} />;
+    // BlockWill fork: work item mentions, inserted with "#"
+    case "issue":
+      return (
+        <EditorWorkItemMention
+          id={entity_identifier}
+          projectId={project_id}
+          projectIdentifier={project_identifier}
+          sequenceId={sequence_id}
+        />
+      );
     default:
       return null;
   }

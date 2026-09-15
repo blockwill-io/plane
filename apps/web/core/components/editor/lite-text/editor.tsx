@@ -101,7 +101,7 @@ export const LiteTextEditor = React.forwardRef(function LiteTextEditor(
     workspaceSlug,
   });
   // use editor mention
-  const { fetchMentions } = useEditorMention({
+  const { fetchMentions, fetchWorkItemMentions } = useEditorMention({
     searchEntity: async (payload) =>
       await workspaceService.searchEntity(workspaceSlug, {
         ...payload,
@@ -157,6 +157,12 @@ export const LiteTextEditor = React.forwardRef(function LiteTextEditor(
                 if (!res) throw new Error("Failed in fetching mentions");
                 return res;
               },
+// BlockWill fork: "#" mentions a work item
+workItemSearchCallback: async (query) => {
+  const res = await fetchWorkItemMentions(query);
+  if (!res) throw new Error("Failed in fetching work item mentions");
+  return res;
+},
               renderComponent: EditorMentionsRoot,
               getMentionedEntityDetails: (id) => ({
                 display_name: getUserDetails(id)?.display_name ?? "",

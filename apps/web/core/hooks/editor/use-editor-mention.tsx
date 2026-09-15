@@ -14,7 +14,7 @@ import { Avatar } from "@plane/ui";
 // helpers
 import { getFileURL } from "@plane/utils";
 // plane web hooks
-import { useAdditionalEditorMention } from "@/hooks/use-additional-editor-mention";
+import { buildWorkItemMentionSection, useAdditionalEditorMention } from "@/hooks/use-additional-editor-mention";
 
 type TArgs = {
   enableAdvancedMentions?: boolean;
@@ -76,7 +76,30 @@ export const useEditorMention = (args: TArgs) => {
     [editorMentionTypes, searchEntity, updateAdditionalSections]
   );
 
+  /**
+   * BlockWill fork: the "#" trigger. Scoped to work items rather than every
+   * entity type, so "#" behaves like Linear's and never offers people.
+   */
+  const fetchWorkItemMentions = useCallback(
+    async (query: string): Promise<TMentionSection[]> => {
+      try {
+        const res = await searchEntity({
+          count: 10,
+          query_type: ["issue"],
+          query,
+        });
+        if (!res) throw new Error("No response found");
+        return buildWorkItemMentionSection(res);
+      } catch (error) {
+        console.error("Error in fetching work item mentions:", error);
+        throw error;
+      }
+    },
+    [searchEntity]
+  );
+
   return {
     fetchMentions,
+    fetchWorkItemMentions,
   };
 };

@@ -32,6 +32,15 @@ export const CustomMentionExtensionConfig = Mention.extend<TMentionExtensionOpti
       [EMentionComponentAttributeNames.ENTITY_NAME]: {
         default: null,
       },
+      [EMentionComponentAttributeNames.PROJECT_ID]: {
+        default: null,
+      },
+      [EMentionComponentAttributeNames.PROJECT_IDENTIFIER]: {
+        default: null,
+      },
+      [EMentionComponentAttributeNames.SEQUENCE_ID]: {
+        default: null,
+      },
     };
   },
 
@@ -65,6 +74,12 @@ export const CustomMentionExtensionConfig = Mention.extend<TMentionExtensionOpti
 
 function getMentionDisplayText(options: TMentionExtensionOptions, node: NodeType): string {
   const attrs = node.attrs as TMentionComponentAttributes;
+  // BlockWill fork: a work item reads as its identifier, not as "@uuid".
+  if (attrs[EMentionComponentAttributeNames.ENTITY_NAME] === "issue") {
+    const projectIdentifier = attrs[EMentionComponentAttributeNames.PROJECT_IDENTIFIER];
+    const sequenceId = attrs[EMentionComponentAttributeNames.SEQUENCE_ID];
+    if (projectIdentifier && sequenceId) return `${projectIdentifier}-${sequenceId}`;
+  }
   const mentionEntityId = attrs[EMentionComponentAttributeNames.ENTITY_IDENTIFIER];
   const mentionEntityDetails = options.getMentionedEntityDetails?.(mentionEntityId ?? "");
   return `@${mentionEntityDetails?.display_name ?? attrs[EMentionComponentAttributeNames.ID] ?? mentionEntityId}`;

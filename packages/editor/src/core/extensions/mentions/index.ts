@@ -6,3 +6,4 @@
 
 export * from "./extension";
 export * from "./extension-config";
+export * from "./work-item-trigger";

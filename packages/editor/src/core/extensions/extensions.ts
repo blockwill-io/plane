@@ -22,6 +22,7 @@ import {
   CustomKeymap,
   CustomLinkExtension,
   CustomMentionExtension,
+  WorkItemMentionTriggerExtension,
   CustomQuoteExtension,
   CustomTextAlignExtension,
   CustomTypographyExtension,
@@ -116,6 +117,8 @@ export const CoreEditorExtensions = (args: TArguments): Extensions => {
     TableCell,
     TableRow,
     CustomMentionExtension(mentionHandler),
+    // BlockWill fork: "#" mentions a work item
+    WorkItemMentionTriggerExtension({ workItemSearchCallback: mentionHandler.workItemSearchCallback }),
     CustomPlaceholderExtension({ placeholder, showPlaceholderOnEmpty }),
     CharacterCount,
     CustomColorExtension,
