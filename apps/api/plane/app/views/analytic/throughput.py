@@ -6,7 +6,7 @@
 
 from datetime import datetime, timedelta
 
-from django.db.models import Q
+from django.db.models import Prefetch
 from django.utils import timezone
 
 from rest_framework import status
@@ -14,7 +14,7 @@ from rest_framework.response import Response
 
 from plane.app.permissions import ROLE, allow_permission
 from plane.app.views.base import BaseAPIView
-from plane.db.models import Issue, Project
+from plane.db.models import Issue, IssueAssignee, Project
 
 # Guard rail: a very wide window on a busy workspace could return a lot of rows.
 # Counts stay exact; only the itemised list is capped.
@@ -65,7 +65,14 @@ class ThroughputAnalyticsEndpoint(BaseAPIView):
                 completed_at__lt=end_date,
             )
             .select_related("project", "state")
-            .prefetch_related("assignees")
+            # The bare M2M would bypass IssueAssignee's soft-delete manager and
+            # resurface removed assignees; prefetch the through model instead.
+            .prefetch_related(
+                Prefetch(
+                    "issue_assignee",
+                    queryset=IssueAssignee.objects.select_related("assignee"),
+                )
+            )
         )
         if project_ids:
             queryset = queryset.filter(project_id__in=project_ids)
@@ -99,7 +106,7 @@ class ThroughputAnalyticsEndpoint(BaseAPIView):
                 "state_name": issue.state.name if issue.state else None,
                 "completed_at": issue.completed_at,
             }
-            assignees = list(issue.assignees.all())
+            assignees = [ia.assignee for ia in issue.issue_assignee.all()]
             if not assignees:
                 bucket_for(None, "Unassigned", None)["work_items"].append(item)
                 buckets[None]["count"] += 1
