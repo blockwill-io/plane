@@ -33,6 +33,7 @@ type TRangePreset = {
 };
 
 const RANGE_PRESETS: TRangePreset[] = [
+  { key: "3d", label: "Last 3 days", days: 3 },
   { key: "7d", label: "Last 7 days", days: 7 },
   { key: "14d", label: "Last 14 days", days: 14 },
   { key: "30d", label: "Last 30 days", days: 30 },
@@ -74,22 +75,20 @@ const AssigneeRow = observer(function AssigneeRow(props: {
         )}
         <span className="flex-1 truncate text-body-sm-medium">{bucket.display_name}</span>
         <div className="hidden h-1.5 w-40 overflow-hidden rounded-full bg-layer-2 md:block">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${share}%` }} />
+          <div className="bg-primary h-full rounded-full" style={{ width: `${share}%` }} />
         </div>
-        <span className="w-24 flex-shrink-0 text-right text-body-sm-semibold tabular-nums">
-          {bucket.count} done
-        </span>
+        <span className="w-24 flex-shrink-0 text-right text-body-sm-semibold tabular-nums">{bucket.count} done</span>
       </button>
 
       {isOpen && (
-        <ul className="flex flex-col gap-1 pb-3 pl-8 pr-1">
+        <ul className="flex flex-col gap-1 pr-1 pb-3 pl-8">
           {bucket.work_items.map((item) => (
             <li key={`${bucket.assignee_id}-${item.id}`}>
               <Link
                 href={`/${workspaceSlug}/projects/${item.project_id}/issues/${item.id}`}
                 className="group flex items-center gap-2 rounded px-2 py-1.5 hover:bg-layer-2-hover"
               >
-                <span className="flex-shrink-0 font-mono text-body-xs-regular text-tertiary">{item.identifier}</span>
+                <span className="font-mono flex-shrink-0 text-body-xs-regular text-tertiary">{item.identifier}</span>
                 <span className="flex-1 truncate text-body-xs-regular">{item.name}</span>
                 <span className="flex-shrink-0 text-body-xs-regular text-tertiary">
                   {renderFormattedDate(item.completed_at)}
@@ -149,10 +148,7 @@ const Throughput = observer(function Throughput() {
       : null
   );
 
-  const maxCount = useMemo(
-    () => (data?.by_assignee ?? []).reduce((max, b) => Math.max(max, b.count), 0),
-    [data]
-  );
+  const maxCount = useMemo(() => (data?.by_assignee ?? []).reduce((max, b) => Math.max(max, b.count), 0), [data]);
 
   return (
     <AnalyticsWrapper i18nTitle="common.analytics">
@@ -213,8 +209,8 @@ const Throughput = observer(function Throughput() {
           <div className="rounded-lg border border-subtle-1 bg-layer-1 px-6 py-8 text-center">
             <p className="text-body-sm-medium">Couldn&apos;t load throughput data.</p>
             <p className="mt-1 text-body-xs-regular text-secondary">
-              The report didn&apos;t load, so this isn&apos;t a count of zero. Try reloading; if it keeps happening
-              the browser console has the reason.
+              The report didn&apos;t load, so this isn&apos;t a count of zero. Try reloading; if it keeps happening the
+              browser console has the reason.
             </p>
           </div>
         ) : isLoading ? (
@@ -227,7 +223,7 @@ const Throughput = observer(function Throughput() {
           <>
             {/* headline */}
             <div className="rounded-lg border border-subtle-1 bg-layer-1 px-6 py-5">
-              <div className="text-body-xs-medium uppercase tracking-wide text-secondary">Work items completed</div>
+              <div className="text-body-xs-medium tracking-wide text-secondary uppercase">Work items completed</div>
               <div className="mt-1 flex items-baseline gap-3">
                 <span className="text-4xl font-semibold tabular-nums">{data?.total_completed ?? 0}</span>
                 <span className="text-body-sm-regular text-secondary">
@@ -264,8 +260,8 @@ const Throughput = observer(function Throughput() {
                 </div>
               )}
               <p className="px-1 py-2 text-body-xs-regular text-tertiary">
-                A work item with several assignees counts for each of them, so the per-person numbers can add up to
-                more than the total above.
+                A work item with several assignees counts for each of them, so the per-person numbers can add up to more
+                than the total above.
               </p>
             </div>
           </>
