@@ -21,6 +21,7 @@ import { Spinner, ControlLink, Row } from "@plane/ui";
 import { cn, generateWorkItemLink } from "@plane/utils";
 // components
 import { MultipleSelectEntityAction } from "@/components/core/multiple-select";
+import { GithubStatusIcon } from "@/components/issues/github-status-icon";
 import { IssueProperties } from "@/components/issues/issue-layouts/properties";
 import { IssueIdentifier } from "@/components/issues/issue-detail/issue-identifier";
 // hooks
@@ -269,6 +270,8 @@ export const IssueBlock = observer(function IssueBlock(props: IssueBlockProps) {
                 <div className="absolute top-0 left-0 z-[99999] h-full w-full animate-pulse bg-surface-1/20" />
               )}
             </div>
+
+            <GithubStatusIcon issueId={issue.id} projectId={issue.project_id} />
 
             <Tooltip
               tooltipContent={issue.name}
