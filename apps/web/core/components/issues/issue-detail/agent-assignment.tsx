@@ -90,29 +90,28 @@ export const IssueAgentAssignment = observer(function IssueAgentAssignment(props
 
   const assignedBy = assignment.assigned_by ? getUserDetails(assignment.assigned_by) : undefined;
   const assignedByName = assignedBy?.display_name ?? assignment.assigned_by_display_name ?? "someone";
-  const tooltip = `Assigned to ${AGENT_LABEL} by ${assignedByName} on ${renderFormattedDate(assignment.assigned_at)}. ${AGENT_LABEL} will pick this up and move the state as it works; the assignees stay the owners.`;
+  const tooltip = `Assigned to ${AGENT_LABEL} by ${assignedByName} ${calculateTimeAgo(assignment.assigned_at)} (${renderFormattedDate(assignment.assigned_at)}). ${AGENT_LABEL} will pick this up and move the state as it works; the assignees stay the owners.`;
 
   return (
-    <div className={cn("flex h-full items-center", className)}>
+    <div className={cn("flex h-full min-w-0 items-center", className)}>
       <Tooltip tooltipContent={tooltip} position="top-start">
         <div
           className={cn(
-            "group/agent flex h-7.5 max-w-full items-center gap-1.5 rounded-sm border border-accent-strong/40 bg-accent-subtle pr-1 pl-2 text-body-xs-medium text-accent-primary",
+            // min-w-0 + overflow-hidden keep the chip inside the sidebar column so the
+            // unassign button is always on screen; the label truncates instead.
+            "flex h-7.5 w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-sm border border-accent-strong/40 bg-accent-subtle pr-1 pl-2 text-body-xs-medium text-accent-primary",
             isLocked && "opacity-70"
           )}
         >
           <Bot className="size-3.5 shrink-0" aria-hidden="true" />
-          <span className="truncate">Assigned to {AGENT_LABEL}</span>
-          <span className="hidden truncate text-caption-md-regular text-accent-primary/70 sm:inline">
-            · {calculateTimeAgo(assignment.assigned_at)}
-          </span>
+          <span className="min-w-0 truncate">Assigned to {AGENT_LABEL}</span>
           {!disabled && (
             <button
               type="button"
               onClick={handleUnassign}
               disabled={isUpdating}
               className={cn(
-                "ml-0.5 grid size-5 shrink-0 place-items-center rounded-sm text-accent-primary/70 transition-colors",
+                "ml-auto grid size-5 shrink-0 place-items-center rounded-sm text-accent-primary/70 transition-colors",
                 "hover:bg-accent-primary/15 hover:text-accent-primary",
                 "disabled:cursor-not-allowed"
               )}
