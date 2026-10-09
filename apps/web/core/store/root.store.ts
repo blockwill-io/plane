@@ -46,6 +46,8 @@ import type { ILabelStore } from "./label.store";
 import { LabelStore } from "./label.store";
 import type { IMilestoneStore } from "./milestone.store";
 import { MilestoneStore } from "./milestone.store";
+import type { IAgentAssignmentStore } from "./agent-assignment.store";
+import { AgentAssignmentStore } from "./agent-assignment.store";
 import type { IMemberRootStore } from "./member";
 import { MemberRootStore } from "./member";
 import type { IModuleStore } from "./module.store";
@@ -88,6 +90,7 @@ export class CoreRootStore {
   state: IStateStore;
   label: ILabelStore;
   milestone: IMilestoneStore;
+  agentAssignment: IAgentAssignmentStore;
   dashboard: IDashboardStore;
   analytics: IAnalyticsStore;
   projectPages: IProjectPageStore;
@@ -126,6 +129,7 @@ export class CoreRootStore {
     this.state = new StateStore(this);
     this.label = new LabelStore(this);
     this.milestone = new MilestoneStore(this);
+    this.agentAssignment = new AgentAssignmentStore(this);
     this.dashboard = new DashboardStore(this);
     this.multipleSelect = new MultipleSelectStore();
     this.projectInbox = new ProjectInboxStore(this);
@@ -162,6 +166,7 @@ export class CoreRootStore {
     this.state = new StateStore(this);
     this.label = new LabelStore(this);
     this.milestone = new MilestoneStore(this);
+    this.agentAssignment = new AgentAssignmentStore(this);
     this.dashboard = new DashboardStore(this);
     this.projectInbox = new ProjectInboxStore(this);
     this.projectPages = new ProjectPageStore(this);

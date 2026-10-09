@@ -5,6 +5,7 @@
  */
 
 import { observer } from "mobx-react";
+import { Bot } from "lucide-react";
 // i18n
 import { useTranslation } from "@plane/i18n";
 // ui icons
@@ -41,6 +42,7 @@ import type { TIssueOperations } from "../issue-detail";
 import { IssueCycleSelect } from "../issue-detail/cycle-select";
 import { IssueLabel } from "../issue-detail/label";
 import { IssueModuleSelect } from "../issue-detail/module-select";
+import { IssueAgentAssignment } from "../issue-detail/agent-assignment";
 
 interface IPeekOverviewProperties {
   workspaceSlug: string;
@@ -228,6 +230,17 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
             />
           </SidebarPropertyListItem>
         )}
+
+        {/* BlockWill fork: hand-off to StartupOS */}
+        <SidebarPropertyListItem icon={Bot} label="StartupOS">
+          <IssueAgentAssignment
+            className="h-7.5 w-full grow"
+            workspaceSlug={workspaceSlug}
+            projectId={projectId}
+            issueId={issueId}
+            disabled={disabled}
+          />
+        </SidebarPropertyListItem>
 
         <SidebarPropertyListItem icon={ParentPropertyIcon} label={t("common.parent")}>
           <IssueParentSelectRoot

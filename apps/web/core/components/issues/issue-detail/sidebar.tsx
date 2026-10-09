@@ -6,7 +6,7 @@
 
 import { observer } from "mobx-react";
 // i18n
-import { GitPullRequest, Milestone as MilestoneIcon } from "lucide-react";
+import { Bot, GitPullRequest, Milestone as MilestoneIcon } from "lucide-react";
 import { useTranslation } from "@plane/i18n";
 // ui
 import {
@@ -42,6 +42,7 @@ import { SidebarPropertyListItem } from "@/components/common/layout/sidebar/prop
 import { IssueCycleSelect } from "./cycle-select";
 import { IssueLabel } from "./label";
 import { IssueMilestoneSelect } from "./milestone-select";
+import { IssueAgentAssignment } from "./agent-assignment";
 import { IssuePullRequests } from "./pull-requests";
 import { IssueModuleSelect } from "./module-select";
 import type { TIssueOperations } from "./root";
@@ -242,6 +243,17 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
             {/* BlockWill fork: milestone */}
             <SidebarPropertyListItem icon={MilestoneIcon} label="Milestone">
               <IssueMilestoneSelect
+                className="h-7.5 w-full grow"
+                workspaceSlug={workspaceSlug}
+                projectId={projectId}
+                issueId={issueId}
+                disabled={!isEditable}
+              />
+            </SidebarPropertyListItem>
+
+            {/* BlockWill fork: hand-off to StartupOS */}
+            <SidebarPropertyListItem icon={Bot} label="StartupOS">
+              <IssueAgentAssignment
                 className="h-7.5 w-full grow"
                 workspaceSlug={workspaceSlug}
                 projectId={projectId}

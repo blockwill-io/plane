@@ -156,6 +156,11 @@ class IssueFilterSet(BaseFilterSet):
 
     is_archived = filters.BooleanFilter(method="filter_is_archived")
 
+    # BlockWill fork: agent assignment ("Assigned to StartupOS"). Value is the
+    # agent key, e.g. "startupos"; negate via the rich filter {"not": ...}.
+    agent = filters.CharFilter(method="filter_agent")
+    agent__in = CharInFilter(method="filter_agent_in", lookup_expr="in")
+
     state_group = filters.CharFilter(field_name="state__group")
     state_group__in = CharInFilter(field_name="state__group", lookup_expr="in")
 
@@ -274,6 +279,13 @@ class IssueFilterSet(BaseFilterSet):
             issue_mention__mention_id__in=value,
             issue_mention__deleted_at__isnull=True,
         )
+
+    def filter_agent(self, queryset, name, value):
+        """BlockWill fork: work items handed to an agent (live rows only)."""
+        return Q(agent_assignments__agent=value, agent_assignments__deleted_at__isnull=True)
+
+    def filter_agent_in(self, queryset, name, value):
+        return Q(agent_assignments__agent__in=value, agent_assignments__deleted_at__isnull=True)
 
     def filter_label_id(self, queryset, name, value):
         """Filter by label ID, excluding soft deleted labels"""

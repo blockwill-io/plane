@@ -47,6 +47,7 @@ from .issue import (
     IssueDescriptionVersion,
 )
 from .milestone import Milestone, IssueMilestone
+from .agent_assignment import IssueAgentAssignment, AGENTS, agent_label
 from .module import Module, ModuleIssue, ModuleLink, ModuleMember, ModuleUserProperties
 from .notification import EmailNotificationLog, Notification, UserNotificationPreference
 from .page import Page, PageLabel, PageLog, ProjectPage, PageVersion

@@ -4,6 +4,7 @@
  * See the LICENSE file for details.
  */
 
+export * from "./agent";
 export * from "./cycle";
 export * from "./date";
 export * from "./label";

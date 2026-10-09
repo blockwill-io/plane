@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useMemo } from "react";
-import { AtSign, Briefcase } from "lucide-react";
+import { AtSign, Bot, Briefcase } from "lucide-react";
 // plane imports
 import { Logo } from "@plane/propel/emoji-icon-picker";
 import {
@@ -35,6 +35,7 @@ import type {
 } from "@plane/types";
 import { Avatar } from "@plane/ui";
 import {
+  getAgentFilterConfig,
   getAssigneeFilterConfig,
   getCreatedAtFilterConfig,
   getCreatedByFilterConfig,
@@ -305,6 +306,18 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
     [isFilterEnabled, operatorConfigs]
   );
 
+  // BlockWill fork: agent assignment filter config ("StartupOS")
+  const agentFilterConfig = useMemo(
+    () =>
+      getAgentFilterConfig<TWorkItemFilterProperty>("agent")({
+        isEnabled: isFilterEnabled("agent"),
+        filterIcon: Bot,
+        getOptionIcon: () => <Bot className="size-3 text-accent-primary" />,
+        ...operatorConfigs,
+      }),
+    [isFilterEnabled, operatorConfigs]
+  );
+
   // start date filter config
   const startDateFilterConfig = useMemo(
     () =>
@@ -369,6 +382,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
       stateGroupFilterConfig,
       assigneeFilterConfig,
       priorityFilterConfig,
+      agentFilterConfig,
       projectFilterConfig,
       mentionFilterConfig,
       labelFilterConfig,
@@ -393,6 +407,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
       created_by_id: createdByFilterConfig,
       subscriber_id: subscriberFilterConfig,
       priority: priorityFilterConfig,
+      agent: agentFilterConfig,
       start_date: startDateFilterConfig,
       target_date: targetDateFilterConfig,
       created_at: createdAtFilterConfig,

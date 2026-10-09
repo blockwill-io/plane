@@ -158,6 +158,7 @@ from .issue.version import IssueVersionEndpoint, WorkItemDescriptionVersionEndpo
 
 from .milestone import MilestoneViewSet, MilestoneIssueViewSet
 from .github_link import ProjectGithubLinkSummaryEndpoint
+from .agent_assignment import IssueAgentAssignmentEndpoint, ProjectAgentAssignmentSummaryEndpoint
 
 from .module.base import (
     ModuleViewSet,

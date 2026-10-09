@@ -34,6 +34,7 @@ export * from "./issues/issue-identifier";
 export * from "./issues/issue-property-values";
 export * from "./layout";
 export * from "./milestone";
+export * from "./agent-assignment";
 export * from "./module";
 export * from "./navigation-preferences";
 export * from "./page";

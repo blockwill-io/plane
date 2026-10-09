@@ -30,6 +30,7 @@ import {
   IssueAttachmentActivity,
   IssueArchivedAtActivity,
   IssueInboxActivity,
+  IssueAgentAssignmentActivity,
 } from "./actions";
 
 type TIssueActivityItem = {
@@ -91,6 +92,9 @@ export const IssueActivityItem = observer(function IssueActivityItem(props: TIss
     case "intake":
     case "inbox":
       return <IssueInboxActivity {...componentDefaultProps} />;
+    // BlockWill fork: hand-off to StartupOS
+    case "agent_assignment":
+      return <IssueAgentAssignmentActivity {...componentDefaultProps} />;
     default:
       return null;
   }

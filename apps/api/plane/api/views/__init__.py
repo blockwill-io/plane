@@ -16,6 +16,11 @@ from .milestone import (
     MilestoneWorkItemAPIEndpoint,
 )
 
+from .agent_assignment import (
+    WorkspaceAgentAssignmentListAPIEndpoint,
+    WorkItemAgentAssignmentAPIEndpoint,
+)
+
 from .estimate import (
     ProjectEstimateAPIEndpoint,
     EstimatePointListCreateAPIEndpoint,

@@ -21,6 +21,7 @@ import { Spinner, ControlLink, Row } from "@plane/ui";
 import { cn, generateWorkItemLink } from "@plane/utils";
 // components
 import { MultipleSelectEntityAction } from "@/components/core/multiple-select";
+import { AgentBadge } from "@/components/issues/agent-badge";
 import { GithubStatusIcon } from "@/components/issues/github-status-icon";
 import { IssueProperties } from "@/components/issues/issue-layouts/properties";
 import { IssueIdentifier } from "@/components/issues/issue-detail/issue-identifier";
@@ -272,6 +273,7 @@ export const IssueBlock = observer(function IssueBlock(props: IssueBlockProps) {
             </div>
 
             <GithubStatusIcon issueId={issue.id} projectId={issue.project_id} />
+            <AgentBadge issueId={issue.id} projectId={issue.project_id} />
 
             <Tooltip
               tooltipContent={issue.name}

@@ -12,6 +12,7 @@ from .project import urlpatterns as project_patterns
 from .state import urlpatterns as state_patterns
 from .estimate import urlpatterns as estimate_patterns
 from .milestone import urlpatterns as milestone_patterns
+from .agent_assignment import urlpatterns as agent_assignment_patterns
 from .user import urlpatterns as user_patterns
 from .work_item import urlpatterns as work_item_patterns
 from .invite import urlpatterns as invite_patterns
@@ -26,6 +27,7 @@ urlpatterns = [
     *module_patterns,
     *project_patterns,
     *milestone_patterns,
+    *agent_assignment_patterns,
     *estimate_patterns,
     *state_patterns,
     *user_patterns,

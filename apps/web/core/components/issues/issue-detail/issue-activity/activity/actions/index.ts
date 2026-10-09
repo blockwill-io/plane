@@ -22,6 +22,7 @@ export * from "./link";
 export * from "./attachment";
 export * from "./archived-at";
 export * from "./inbox";
+export * from "./agent-assignment";
 export * from "./label-activity-chip";
 
 // helpers
