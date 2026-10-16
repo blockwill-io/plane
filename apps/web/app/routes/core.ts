@@ -38,6 +38,9 @@ export const coreRoutes: RouteConfigEntry[] = [
   // Invitations
   layout("./(all)/invitations/layout.tsx", [route("invitations", "./(all)/invitations/page.tsx")]),
 
+  // OAuth sign-in hand-off (BlockWill fork): login, then back to the API's consent screen
+  layout("./(all)/oauth/continue/layout.tsx", [route("oauth/continue", "./(all)/oauth/continue/page.tsx")]),
+
   // Workspace Invitations
   layout("./(all)/workspace-invitations/layout.tsx", [
     route("workspace-invitations", "./(all)/workspace-invitations/page.tsx"),

@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
+# Python imports
+import hashlib
+
 # Django imports
 from django.conf import settings
 
@@ -16,6 +19,11 @@ class ApiKeyRateThrottle(SimpleRateThrottle):
     def get_cache_key(self, request, view):
         # Retrieve the API key from the request header
         api_key = request.headers.get("X-Api-Key")
+        if not api_key:
+            # BlockWill fork: OAuth bearer tokens share the API key budget.
+            authorization = request.headers.get("Authorization", "")
+            if authorization.lower().startswith("bearer "):
+                api_key = hashlib.sha256(authorization[7:].strip().encode()).hexdigest()
         if not api_key:
             return None  # Allow the request if there's no API key
 

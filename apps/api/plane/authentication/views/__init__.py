@@ -41,3 +41,11 @@ from .space.password_management import (
     ResetPasswordSpaceEndpoint,
 )
 from .app.password_management import ForgotPasswordEndpoint, ResetPasswordEndpoint
+
+# BlockWill fork: Plane as an OAuth authorization server
+from .oauth_provider import (
+    OAuthAppInstallationEndpoint,
+    OAuthAuthorizeEndpoint,
+    OAuthConsentEndpoint,
+    OAuthTokenEndpoint,
+)

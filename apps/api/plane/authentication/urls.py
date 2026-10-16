@@ -5,6 +5,10 @@
 from django.urls import path
 
 from .views import (
+    OAuthAppInstallationEndpoint,
+    OAuthAuthorizeEndpoint,
+    OAuthConsentEndpoint,
+    OAuthTokenEndpoint,
     CSRFTokenEndpoint,
     ForgotPasswordEndpoint,
     SetUserPasswordEndpoint,
@@ -150,4 +154,9 @@ urlpatterns = [
         GiteaCallbackSpaceEndpoint.as_view(),
         name="space-gitea-callback",
     ),
+    ## BlockWill fork: Plane as an OAuth authorization server (views/oauth_provider.py)
+    path("o/authorize-app/", OAuthAuthorizeEndpoint.as_view(), name="oauth-authorize"),
+    path("o/authorize-app/consent/", OAuthConsentEndpoint.as_view(), name="oauth-consent"),
+    path("o/token/", OAuthTokenEndpoint.as_view(), name="oauth-token"),
+    path("o/app-installation/", OAuthAppInstallationEndpoint.as_view(), name="oauth-app-installation"),
 ]
