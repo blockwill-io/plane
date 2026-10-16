@@ -5,6 +5,8 @@
 from django.urls import path
 
 from plane.api.views import (
+    ProjectFeatureAPIEndpoint,
+    WorkspaceFeatureAPIEndpoint,
     ProjectListCreateAPIEndpoint,
     ProjectListLiteAPIEndpoint,
     ProjectDetailAPIEndpoint,
@@ -13,6 +15,17 @@ from plane.api.views import (
 )
 
 urlpatterns = [
+    # BlockWill fork: feature flags in Plane Cloud's shape (views/features.py)
+    path(
+        "workspaces/<str:slug>/features/",
+        WorkspaceFeatureAPIEndpoint.as_view(http_method_names=["get", "patch"]),
+        name="workspace-features",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/features/",
+        ProjectFeatureAPIEndpoint.as_view(http_method_names=["get", "patch"]),
+        name="project-features",
+    ),
     path(
         "workspaces/<str:slug>/projects/",
         ProjectListCreateAPIEndpoint.as_view(http_method_names=["get", "post"]),

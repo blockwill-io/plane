@@ -96,3 +96,4 @@ from .user import UserEndpoint
 from .invite import WorkspaceInvitationsViewset
 
 from .sticky import StickyViewSet
+from .features import ProjectFeatureAPIEndpoint, WorkspaceFeatureAPIEndpoint
