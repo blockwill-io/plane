@@ -51,6 +51,11 @@ from .issue import (
 )
 
 from .move import MoveWorkItemAPIEndpoint
+from .work_item_query import (
+    ArchivedWorkItemListAPIEndpoint,
+    WorkspaceWorkItemCountAPIEndpoint,
+    WorkspaceWorkItemListAPIEndpoint,
+)
 
 from .cycle import (
     CycleListCreateAPIEndpoint,

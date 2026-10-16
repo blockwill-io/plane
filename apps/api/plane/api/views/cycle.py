@@ -50,6 +50,7 @@ from plane.utils.cycle_transfer_issues import transfer_cycle_issues
 from plane.utils.order_queryset import CYCLE_ORDER_BY_ALLOWLIST, ISSUE_ORDER_BY_ALLOWLIST, sanitize_order_by
 from plane.utils.host import base_host
 from .base import BaseAPIView
+from .work_item_query import WorkItemQueryError, work_item_query
 from plane.bgtasks.webhook_task import model_activity
 from plane.utils.openapi.decorators import cycle_docs
 from plane.utils.openapi import (
@@ -903,6 +904,12 @@ class CycleIssueListCreateAPIEndpoint(BaseAPIView):
         Retrieve all work items assigned to a cycle or get details of a specific cycle work item.
         Returns paginated results with work item details, assignees, and labels.
         """
+        # BlockWill fork: pql / filters narrow the list.
+        try:
+            query_filter, _ = work_item_query(request, slug, project_id)
+        except WorkItemQueryError as exc:
+            return exc.response()
+
         # List
         order_by = sanitize_order_by(request.GET.get("order_by", "created_at"), ISSUE_ORDER_BY_ALLOWLIST, "created_at")
         issues = (
@@ -939,6 +946,9 @@ class CycleIssueListCreateAPIEndpoint(BaseAPIView):
                 .values("count")
             )
         )
+
+        if query_filter is not None:
+            issues = issues.filter(query_filter).distinct()
 
         return self.paginate(
             request=request,

@@ -88,6 +88,8 @@ from plane.utils.order_queryset import (
 )
 from plane.bgtasks.storage_metadata_task import get_asset_object_metadata
 from .base import BaseAPIView
+from .work_item_query import WorkItemQueryError, _with_list_annotations, work_item_query
+from plane.utils.pql import work_item_base_queryset
 from plane.utils.host import base_host
 from plane.utils.issue_relation_mapper import get_actual_relation
 from plane.bgtasks.webhook_task import model_activity
@@ -315,19 +317,11 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
         Supports filtering, ordering, and field selection through query parameters.
         """
 
-        unsupported_filters = [param for param in ("pql", "filters") if request.GET.get(param)]
-        if unsupported_filters:
-            return Response(
-                {
-                    "pql": (
-                        "PQL and structured filters are not supported on this Plane edition. "
-                        "Remove the pql/filters parameter and filter results client-side, or use "
-                        "a Plane edition that supports work item query filtering."
-                    ),
-                    "unsupported_parameters": unsupported_filters,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # BlockWill fork: pql / filters are supported (upstream CE rejects them).
+        try:
+            query_filter, hidden = work_item_query(request, slug, project_id)
+        except WorkItemQueryError as exc:
+            return exc.response()
 
         external_id = request.GET.get("external_id")
         external_source = request.GET.get("external_source")
@@ -357,9 +351,16 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
             default="-created_at",
         )
 
+        base_queryset = self.get_queryset()
+        if hidden:
+            base_queryset = _with_list_annotations(
+                work_item_base_queryset(hidden).filter(project_id=project_id, workspace__slug=slug)
+            ).distinct()
+        if query_filter is not None:
+            base_queryset = base_queryset.filter(query_filter)
+
         issue_queryset = (
-            self.get_queryset()
-            .annotate(
+            base_queryset.annotate(
                 cycle_id=Subquery(
                     CycleIssue.objects.filter(issue=OuterRef("id"), deleted_at__isnull=True).values("cycle_id")[:1]
                 )
@@ -381,7 +382,9 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
             )
         )
 
-        total_issue_queryset = Issue.issue_objects.filter(project_id=project_id, workspace__slug=slug)
+        total_issue_queryset = work_item_base_queryset(hidden).filter(project_id=project_id, workspace__slug=slug)
+        if query_filter is not None:
+            total_issue_queryset = total_issue_queryset.filter(query_filter).distinct()
 
         # Priority Ordering
         if order_by_param == "priority" or order_by_param == "-priority":

@@ -41,6 +41,7 @@ from plane.db.models import (
 )
 
 from .base import BaseAPIView
+from .work_item_query import WorkItemQueryError, work_item_query
 from plane.bgtasks.webhook_task import model_activity
 from plane.utils.host import base_host
 from plane.utils.order_queryset import ISSUE_ORDER_BY_ALLOWLIST, MODULE_ORDER_BY_ALLOWLIST, sanitize_order_by
@@ -647,6 +648,12 @@ class ModuleIssueListCreateAPIEndpoint(BaseAPIView):
         Retrieve all work items assigned to a module with detailed information.
         Returns paginated results including assignees, labels, and attachments.
         """
+        # BlockWill fork: pql / filters narrow the list.
+        try:
+            query_filter, _ = work_item_query(request, slug, project_id)
+        except WorkItemQueryError as exc:
+            return exc.response()
+
         order_by = sanitize_order_by(request.GET.get("order_by", "created_at"), ISSUE_ORDER_BY_ALLOWLIST, "created_at")
         issues = (
             Issue.issue_objects.filter(issue_module__module_id=module_id, issue_module__deleted_at__isnull=True)
@@ -682,6 +689,9 @@ class ModuleIssueListCreateAPIEndpoint(BaseAPIView):
                 .values("count")
             )
         )
+        if query_filter is not None:
+            issues = issues.filter(query_filter).distinct()
+
         return self.paginate(
             request=request,
             queryset=(issues),
