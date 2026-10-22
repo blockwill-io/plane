@@ -5,6 +5,8 @@
 # Kept in its own file so upstream merges never conflict.
 
 # Python imports
+import re
+
 from django.db import connection, transaction
 from django.db.models import Max
 from django.utils import timezone
@@ -58,6 +60,13 @@ PROJECT_SCOPED_RELATED = (
 
 MAX_SUB_ITEM_DEPTH = 10
 
+# The asset an <image-component> in a description shows: its src is the asset
+# id. Only a well-formed UUID is taken, so a malformed src is ignored rather
+# than failing the move on the primary-key lookup.
+DESCRIPTION_ASSET_SRC = re.compile(
+    r'<image-component[^>]*\bsrc="([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"'
+)
+
 
 class MoveWorkItemAPIEndpoint(BaseAPIView):
     """Move a work item to another project in the same workspace.
@@ -101,6 +110,39 @@ class MoveWorkItemAPIEndpoint(BaseAPIView):
         ]
         return (last_sequence or 0) + 1
 
+    def _move_description_assets(self, issue, source_project, target_project):
+        """Move the images the description shows that are not linked to the issue.
+
+        An image uploaded through the generic asset endpoint (how API clients
+        such as StartupOS embed screenshots) is stored with a project and no
+        issue, so the issue filter above leaves it behind. Plane serves a
+        description image by the issue's current project, so after the move it
+        answered 404 and the editor showed "Error loading image". An asset that
+        another description in the source project still shows stays put, so
+        moving one item never breaks another.
+        """
+        asset_ids = set(DESCRIPTION_ASSET_SRC.findall(issue.description_html or ""))
+        for asset_id in asset_ids:
+            shared = (
+                Issue.objects.filter(project=source_project, description_html__contains=asset_id)
+                .exclude(pk=issue.pk)
+                .exists()
+            )
+            if shared:
+                continue
+            # Only a generic upload nothing else owns: an asset tied to an issue,
+            # comment, page or draft belongs to that, wherever it is shown.
+            FileAsset.objects.filter(
+                pk=asset_id,
+                workspace_id=issue.workspace_id,
+                project_id=source_project.id,
+                entity_type=FileAsset.EntityTypeContext.ISSUE_ATTACHMENT,
+                issue__isnull=True,
+                comment__isnull=True,
+                page__isnull=True,
+                draft_issue__isnull=True,
+            ).update(project=target_project)
+
     def _move_one(self, issue, source_project, target_project, actor):
         new_state = self._resolve_state(issue.state, target_project)
 
@@ -142,6 +184,7 @@ class MoveWorkItemAPIEndpoint(BaseAPIView):
             related_model.objects.filter(issue=issue).update(project=target_project)
         CommentReaction.objects.filter(comment__issue=issue).update(project=target_project)
         FileAsset.objects.filter(issue=issue).update(project=target_project)
+        self._move_description_assets(issue, source_project, target_project)
 
         sequence_id = self._next_sequence_id(target_project)
 
