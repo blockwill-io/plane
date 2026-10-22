@@ -60,8 +60,12 @@ PROJECT_SCOPED_RELATED = (
 
 MAX_SUB_ITEM_DEPTH = 10
 
-# The asset an <image-component> in a description shows: its src is the asset id.
-DESCRIPTION_ASSET_SRC = re.compile(r'<image-component[^>]*\bsrc="([0-9a-fA-F-]{36})"')
+# The asset an <image-component> in a description shows: its src is the asset
+# id. Only a well-formed UUID is taken, so a malformed src is ignored rather
+# than failing the move on the primary-key lookup.
+DESCRIPTION_ASSET_SRC = re.compile(
+    r'<image-component[^>]*\bsrc="([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"'
+)
 
 
 class MoveWorkItemAPIEndpoint(BaseAPIView):
@@ -126,9 +130,18 @@ class MoveWorkItemAPIEndpoint(BaseAPIView):
             )
             if shared:
                 continue
-            FileAsset.objects.filter(pk=asset_id, workspace_id=issue.workspace_id, project_id=source_project.id).update(
-                project=target_project
-            )
+            # Only a generic upload nothing else owns: an asset tied to an issue,
+            # comment, page or draft belongs to that, wherever it is shown.
+            FileAsset.objects.filter(
+                pk=asset_id,
+                workspace_id=issue.workspace_id,
+                project_id=source_project.id,
+                entity_type=FileAsset.EntityTypeContext.ISSUE_ATTACHMENT,
+                issue__isnull=True,
+                comment__isnull=True,
+                page__isnull=True,
+                draft_issue__isnull=True,
+            ).update(project=target_project)
 
     def _move_one(self, issue, source_project, target_project, actor):
         new_state = self._resolve_state(issue.state, target_project)

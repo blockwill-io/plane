@@ -90,6 +90,37 @@ class TestMoveWorkItemDescriptionImages:
         asset.refresh_from_db()
         assert asset.project_id == web.id
 
+    def test_ignores_a_malformed_src_and_still_moves(self, api_key_client, workspace, create_user, web, unsorted):
+        issue = Issue.objects.create(
+            name="Odd src",
+            workspace=workspace,
+            project=web,
+            description_html='<image-component src="------------------------------------"></image-component>',
+            created_by=create_user,
+        )
+
+        response = self.move(api_key_client, workspace, web, issue, unsorted)
+
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_leaves_an_asset_another_entity_owns(self, api_key_client, workspace, create_user, web, unsorted):
+        owner = Issue.objects.create(name="Owner", workspace=workspace, project=web, created_by=create_user)
+        asset = _image(workspace, create_user, web)
+        FileAsset.objects.filter(pk=asset.pk).update(issue=owner)
+        issue = Issue.objects.create(
+            name="Shows it",
+            workspace=workspace,
+            project=web,
+            description_html=_with_image(asset),
+            created_by=create_user,
+        )
+
+        response = self.move(api_key_client, workspace, web, issue, unsorted)
+
+        assert response.status_code == status.HTTP_200_OK
+        asset.refresh_from_db()
+        assert asset.project_id == web.id
+
     def test_never_touches_an_asset_from_another_project(self, api_key_client, workspace, create_user, web, unsorted):
         elsewhere = _project(workspace, create_user, "Compliance", "CMP")
         asset = _image(workspace, create_user, elsewhere)
