@@ -40,6 +40,7 @@ from plane.db.models import (
     Project,
     ProjectMember,
     State,
+    WorkspaceMember,
 )
 from plane.utils.uuid import convert_uuid_to_integer
 from .base import BaseAPIView
@@ -218,6 +219,18 @@ class MoveWorkItemAPIEndpoint(BaseAPIView):
             epoch=timezone.now().timestamp(),
         )
 
+    def _can_admin_source(self, user, slug, project_id):
+        member = ProjectMember.objects.filter(
+            workspace__slug=slug, project_id=project_id, member=user, is_active=True
+        ).first()
+        if member is None:
+            return False
+        if member.role == ROLE.ADMIN.value:
+            return True
+        return WorkspaceMember.objects.filter(
+            workspace__slug=slug, member=user, role=ROLE.ADMIN.value, is_active=True
+        ).exists()
+
     def post(self, request, slug, project_id, pk):
         target_project_id = request.data.get("target_project_id")
         if not target_project_id:
@@ -235,6 +248,15 @@ class MoveWorkItemAPIEndpoint(BaseAPIView):
         if issue.is_draft or (issue.state and issue.state.group == "triage"):
             return Response(
                 {"error": "draft and intake work items cannot be moved"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Moving takes the item away from the source project, so it follows
+        # Plane's delete rule: the item's creator, a source project admin, or
+        # a workspace admin who is a member of the source project.
+        if issue.created_by_id != request.user.id and not self._can_admin_source(request.user, slug, project_id):
+            return Response(
+                {"error": "only a project admin or the creator can move this work item"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         target_project = Project.objects.filter(
