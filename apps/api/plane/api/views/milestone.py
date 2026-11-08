@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from plane.api.serializers import IssueMilestoneAPISerializer, MilestoneAPISerializer
 from plane.app.permissions import ProjectEntityPermission
 from plane.db.models import Issue, IssueMilestone, Milestone
+from plane.utils.guest_scope import guest_scope
 
 from .base import BaseAPIView
 
@@ -81,8 +82,12 @@ class MilestoneWorkItemAPIEndpoint(BaseAPIView):
     def get(self, request, slug, project_id, milestone_id):
         return self.paginate(
             request=request,
-            queryset=IssueMilestone.objects.filter(
-                workspace__slug=slug, project_id=project_id, milestone_id=milestone_id
+            queryset=guest_scope(
+                IssueMilestone.objects.filter(workspace__slug=slug, project_id=project_id, milestone_id=milestone_id),
+                request.user,
+                slug,
+                project_id,
+                field="issue__created_by",
             ),
             on_results=lambda rows: IssueMilestoneAPISerializer(rows, many=True).data,
         )

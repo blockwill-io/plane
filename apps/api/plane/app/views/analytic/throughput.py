@@ -12,9 +12,10 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 
+from plane.api.views.work_item_query import visible_to
 from plane.app.permissions import ROLE, allow_permission
 from plane.app.views.base import BaseAPIView
-from plane.db.models import Issue, IssueAssignee, Project
+from plane.db.models import Issue, IssueAssignee
 
 # Guard rail: a very wide window on a busy workspace could return a lot of rows.
 # Counts stay exact; only the itemised list is capped.
@@ -44,14 +45,6 @@ class ThroughputAnalyticsEndpoint(BaseAPIView):
             # An end date is inclusive of that whole day.
             end_date = end_date + timedelta(days=1)
 
-        # Only projects the caller actually belongs to.
-        accessible_projects = Project.objects.filter(
-            workspace__slug=slug,
-            project_projectmember__member=request.user,
-            project_projectmember__is_active=True,
-            archived_at__isnull=True,
-        ).values_list("id", flat=True)
-
         project_ids = [pid for pid in (request.GET.get("project_ids") or "").split(",") if pid]
         if project_id:
             project_ids = [str(project_id)]
@@ -59,11 +52,12 @@ class ThroughputAnalyticsEndpoint(BaseAPIView):
         queryset = (
             Issue.issue_objects.filter(
                 workspace__slug=slug,
-                project_id__in=accessible_projects,
                 state__group="completed",
                 completed_at__gte=start_date,
                 completed_at__lt=end_date,
             )
+            # Only items the caller can see: their projects, own items for restricted guests.
+            .filter(visible_to(request.user, slug))
             .select_related("project", "state")
             # The bare M2M would bypass IssueAssignee's soft-delete manager and
             # resurface removed assignees; prefetch the through model instead.
