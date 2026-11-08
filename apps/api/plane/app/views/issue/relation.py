@@ -215,6 +215,10 @@ class IssueRelationViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # The URL work item must belong to this project and workspace
+        if not Issue.objects.filter(pk=issue_id, project_id=project_id, workspace__slug=slug).exists():
+            return Response({"error": "Issue not found"}, status=status.HTTP_404_NOT_FOUND)
+
         issues = request.data.get("issues", [])
         project = Project.objects.get(pk=project_id)
 
@@ -261,7 +265,7 @@ class IssueRelationViewSet(BaseViewSet):
         # BlockWill fork: marking "Duplicate of" also cancels the marking item
         # (Linear behavior). The URL issue is the one declared a duplicate.
         if get_actual_relation(relation_type) == "duplicate" and issues:
-            cancel_duplicate_issue(issue_id, request.user)
+            cancel_duplicate_issue(issue_id, request.user, project_id, slug)
 
         if relation_type in ["blocking", "start_after", "finish_after"]:
             return Response(

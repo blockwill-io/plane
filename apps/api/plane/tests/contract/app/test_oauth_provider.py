@@ -229,6 +229,55 @@ class TestOAuthRefusals:
         assert api_key_client.get("/api/v1/users/me/").status_code == 200
 
 
+# PLAT-2: a token works on the workspace picked on the consent screen and on
+# users/me/, nowhere else; a token without the "write" scope cannot write.
+
+
+@pytest.fixture
+def other_workspace(create_user):
+    other = Workspace.objects.create(name="Other", slug="other-ws", owner=create_user)
+    WorkspaceMember.objects.get_or_create(workspace=other, member=create_user, defaults={"role": 20})
+    return other
+
+
+def bearer(browser, app, workspace):
+    access = full_flow(browser, app, workspace).json()["access_token"]
+    return Client(HTTP_AUTHORIZATION=f"Bearer {access}")
+
+
+@pytest.mark.contract
+@pytest.mark.django_db
+class TestOAuthTokenScope:
+    def test_token_is_bound_to_its_workspace(self, browser, app, workspace, other_workspace):
+        api = bearer(browser, app, workspace)
+        assert api.get(f"/api/v1/workspaces/{workspace.slug}/projects/").status_code == 200
+        assert api.get(f"/api/v1/workspaces/{other_workspace.slug}/projects/").status_code == 403
+        assert api.get("/api/v1/users/me/").status_code == 200
+
+    def test_slugless_routes_outside_the_allowlist_are_refused(self, browser, app, workspace):
+        api = bearer(browser, app, workspace)
+        assert api.post("/api/v1/assets/user-assets/", {}, content_type="application/json").status_code == 403
+
+    def test_read_scope_cannot_write(self, browser, app, workspace):
+        api = bearer(browser, app, workspace)
+        OAuthToken.objects.update(scope="read")
+        url = f"/api/v1/workspaces/{workspace.slug}/projects/"
+        assert api.get(url).status_code == 200
+        created = api.post(url, {"name": "P", "identifier": "PP"}, content_type="application/json")
+        assert created.status_code == 403
+
+    @pytest.mark.parametrize("scope", ["read write", ""])
+    def test_write_scope_and_legacy_empty_scope_can_write(self, browser, app, workspace, scope):
+        api = bearer(browser, app, workspace)
+        OAuthToken.objects.update(scope=scope)
+        url = f"/api/v1/workspaces/{workspace.slug}/projects/"
+        created = api.post(url, {"name": "P", "identifier": "PP"}, content_type="application/json")
+        assert created.status_code == 201
+
+    def test_api_keys_are_not_workspace_bound(self, api_key_client, workspace, other_workspace):
+        assert api_key_client.get(f"/api/v1/workspaces/{other_workspace.slug}/projects/").status_code == 200
+
+
 @pytest.mark.django_db
 def test_create_oauth_app_command(capsys):
     call_command("create_oauth_app", "--name", "Plane MCP", "--redirect-uri", REDIRECT)

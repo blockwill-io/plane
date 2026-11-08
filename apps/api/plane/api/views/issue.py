@@ -2521,6 +2521,10 @@ class IssueRelationListCreateAPIEndpoint(BaseAPIView):
         issues = serializer.validated_data["issues"]
         project = Project.objects.get(pk=project_id, workspace__slug=slug)
 
+        # The URL work item must belong to this project and workspace
+        if not Issue.objects.filter(pk=issue_id, project_id=project_id, workspace__slug=slug).exists():
+            return Response({"error": "Issue not found"}, status=status.HTTP_404_NOT_FOUND)
+
         actual_relation = get_actual_relation(relation_type)
         is_reverse = relation_type in ["blocking", "start_after", "finish_after"]
 
@@ -2565,7 +2569,7 @@ class IssueRelationListCreateAPIEndpoint(BaseAPIView):
         # BlockWill fork: marking "Duplicate of" also cancels the marking item
         # (Linear behavior). The URL issue is the one declared a duplicate.
         if actual_relation == "duplicate" and issues:
-            cancel_duplicate_issue(issue_id, request.user)
+            cancel_duplicate_issue(issue_id, request.user, project_id, slug)
 
         # Re-fetch with select_related to avoid N+1 queries in serializers.
         # bulk_create with ignore_conflicts=True may not return PKs,
