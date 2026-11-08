@@ -299,6 +299,8 @@ def test_create_oauth_app_command(capsys):
         "http://example.com/cb",
         "https:///cb",
         REDIRECT + "#x",
+        REDIRECT + "\nhttp://evil.example/cb",
+        REDIRECT + "\u2028http://evil.example/cb",
     ],
 )
 def test_create_oauth_app_rejects_unsafe_redirects(uri):

@@ -28,6 +28,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         uris = [uri.strip() for uri in options["redirect_uris"] if uri.strip()]
         for uri in uris:
+            # Stored newline-separated, so a line break inside one value would
+            # smuggle in a second, unchecked URI; URIs never contain whitespace.
+            if any(ch.isspace() for ch in uri):
+                raise CommandError(f"redirect URI must not contain whitespace or line breaks: {uri!r}")
             parts = urlparse(uri)
             secure = parts.scheme == "https" or (parts.scheme == "http" and parts.hostname == "localhost")
             if not secure or not parts.hostname or parts.fragment:
