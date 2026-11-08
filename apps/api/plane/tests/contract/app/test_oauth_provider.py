@@ -101,6 +101,9 @@ class TestOAuthFlow:
         assert page.status_code == 200
         html = page.content.decode()
         assert "Allow Plane MCP" in html and workspace.name in html and create_user.email in html
+        # PLAT-14: the redirect host and a warning, against links someone else started.
+        assert "mcp.example.com" in html
+        assert "Only approve if you just started this from your own app." in html
 
         response = allow(browser, workspace)
         assert response["Location"].startswith(REDIRECT + "?")
@@ -161,6 +164,19 @@ class TestOAuthFlow:
         query = parse_qs(urlparse(response["Location"]).query)
         assert query["error"] == ["access_denied"] and query["state"] == ["xyz"]
         assert not OAuthAuthorizationCode.objects.exists()
+
+
+@pytest.mark.contract
+@pytest.mark.django_db
+def test_consent_shows_host_and_port_but_never_userinfo(browser, app, workspace):
+    redirect = "https://user:hunter2@mcp.example.com:8443/cb"
+    app.redirect_uris = redirect
+    app.save()
+    _, challenge = pkce()
+    assert authorize(browser, app, challenge, redirect_uri=redirect).status_code == 302
+    html = browser.get("/auth/o/authorize-app/consent/").content.decode()
+    assert "mcp.example.com:8443" in html
+    assert "hunter2" not in html and "user:" not in html
 
 
 @pytest.mark.contract
