@@ -288,9 +288,13 @@ class OAuthConsentEndpoint(View):
 
         options = "".join(f'<option value="{escape(w.slug)}">{escape(w.name)}</option>' for w in workspaces)
         app = escape(application.name)
+        # Show where the approval goes, so a link someone else started stands out.
+        host = escape(urlparse(pending["redirect_uri"]).netloc)
         body = f"""
 <h1>Allow {app} to use your Plane account?</h1>
 <p class="who">Signed in as <strong>{escape(request.user.email)}</strong></p>
+<p>You will be sent back to <strong>{host}</strong>.</p>
+<p><strong>Only approve if you just started this from your own app.</strong></p>
 <p>{app} will be able to, as you:</p>
 <ul><li>read your projects, work items, cycles, modules and pages</li>
 <li>create, update and delete them, within your permissions</li></ul>

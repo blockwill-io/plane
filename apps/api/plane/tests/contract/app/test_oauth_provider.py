@@ -100,6 +100,9 @@ class TestOAuthFlow:
         assert page.status_code == 200
         html = page.content.decode()
         assert "Allow Plane MCP" in html and workspace.name in html and create_user.email in html
+        # PLAT-14: the redirect host and a warning, against links someone else started.
+        assert "mcp.example.com" in html
+        assert "Only approve if you just started this from your own app." in html
 
         response = allow(browser, workspace)
         assert response["Location"].startswith(REDIRECT + "?")
