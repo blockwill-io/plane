@@ -5,8 +5,8 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from plane.api.serializers import IssueMilestoneAPISerializer, MilestoneAPISerializer
-from plane.app.permissions import ProjectEntityPermission
-from plane.db.models import Issue, IssueMilestone, Milestone
+from plane.app.permissions import ROLE, ProjectEntityPermission
+from plane.db.models import Issue, IssueMilestone, Milestone, ProjectMember, WorkspaceMember
 from plane.utils.guest_scope import guest_scope
 
 from .base import BaseAPIView
@@ -66,10 +66,29 @@ class MilestoneDetailAPIEndpoint(BaseAPIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def _can_admin(self, user, slug, project_id):
+        member = ProjectMember.objects.filter(
+            workspace__slug=slug, project_id=project_id, member=user, is_active=True
+        ).first()
+        if member is None:
+            return False
+        if member.role == ROLE.ADMIN.value:
+            return True
+        return WorkspaceMember.objects.filter(
+            workspace__slug=slug, member=user, role=ROLE.ADMIN.value, is_active=True
+        ).exists()
+
     def delete(self, request, slug, project_id, pk):
         milestone = self._get(slug, project_id, pk)
         if milestone is None:
             return Response({"error": "Milestone not found"}, status=status.HTTP_404_NOT_FOUND)
+        # Same rule as the app: the creator, a project admin, or a workspace
+        # admin who is a member of the project.
+        if milestone.created_by_id != request.user.id and not self._can_admin(request.user, slug, project_id):
+            return Response(
+                {"error": "Only admin or creator can delete the milestone"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         milestone.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
