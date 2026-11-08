@@ -13,8 +13,8 @@
 # Authorization code flow (RFC 6749 §4.1) with PKCE (RFC 7636, S256 only).
 # Redirect URIs must match a registered one exactly. Codes are single-use and
 # live 10 minutes; re-using one revokes what it minted. Access tokens live an
-# hour, refresh tokens a year; refreshing rotates both tokens. Register a client with
-# `python manage.py create_oauth_app`.
+# hour, refresh tokens 90 days; refreshing rotates both tokens. Scopes are
+# "read" and "write". Register a client with `python manage.py create_oauth_app`.
 
 import base64
 import hashlib
@@ -46,7 +46,7 @@ CODE_TTL = timedelta(minutes=10)
 ACCESS_TTL = timedelta(hours=1)
 # Refreshing rotates the pair with a fresh REFRESH_TTL, so this is how long a
 # connection survives without being used, not a hard cap on its age.
-REFRESH_TTL = timedelta(days=365)
+REFRESH_TTL = timedelta(days=90)
 PENDING_TTL_SECONDS = 15 * 60
 
 ACCESS_PREFIX = "plane_oat_"
@@ -56,6 +56,9 @@ CODE_PREFIX = "plane_oac_"
 PENDING_COOKIE = "plane_oauth_request"
 PENDING_SALT = "plane.oauth.pending-request"
 COOKIE_PATH = "/auth/o/"
+
+# What a client may ask for; the Plane MCP server asks for "read write".
+SCOPES = {"read", "write"}
 
 
 # ---------------------------------------------------------------------------
@@ -231,13 +234,16 @@ class OAuthAuthorizeEndpoint(View):
         method = params.get("code_challenge_method", "plain" if challenge else "")
         if challenge and method != "S256":
             return _redirect_error(redirect_uri, "invalid_request", state, "only S256 PKCE is supported")
+        scopes = params.get("scope", "").split()
+        if set(scopes) - SCOPES:
+            return _redirect_error(redirect_uri, "invalid_scope", state, "scope must be read and/or write")
 
         pending = signing.dumps(
             {
                 "client_id": client_id,
                 "redirect_uri": redirect_uri,
                 "state": state,
-                "scope": params.get("scope", ""),
+                "scope": " ".join(scopes),
                 "code_challenge": challenge,
                 "code_challenge_method": method,
             },
