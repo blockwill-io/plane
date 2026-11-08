@@ -2,7 +2,7 @@
 # Plane MCP server calls, which is how StartupOS finds its queue.
 #
 #   GET  /api/v1/workspaces/<slug>/agent-assignments/?agent=startupos
-#        -> every work item in the workspace handed to the agent, with enough
+#        -> every work item the caller can see that is handed to the agent, with enough
 #           of the work item inline (identifier, name, state, assignees) that
 #           the agent can triage without a retrieve per row.
 #   GET/POST/DELETE /api/v1/workspaces/<slug>/projects/<id>/work-items/<pk>/agent-assignment/
@@ -16,6 +16,7 @@ from plane.db.models import AGENTS, Issue, IssueAgentAssignment
 from plane.utils.agent_assignment import assign_agent, get_assignment, serialize_assignment, unassign_agent
 
 from .base import BaseAPIView
+from .work_item_query import visible_to
 
 DEFAULT_AGENT = "startupos"
 
@@ -46,7 +47,7 @@ def _work_item_summary(issue: Issue) -> dict:
 
 
 class WorkspaceAgentAssignmentListAPIEndpoint(BaseAPIView):
-    """The agent's queue across the whole workspace."""
+    """The agent's queue across every project the caller can see."""
 
     permission_classes = [WorkspaceEntityPermission]
 
@@ -56,8 +57,9 @@ class WorkspaceAgentAssignmentListAPIEndpoint(BaseAPIView):
             return Response(
                 {"error": f"unknown agent; known agents: {', '.join(AGENTS)}"}, status=status.HTTP_400_BAD_REQUEST
             )
+        visible = Issue.objects.filter(workspace__slug=slug).filter(visible_to(request.user, slug))
         assignments = (
-            IssueAgentAssignment.objects.filter(workspace__slug=slug, agent=agent)
+            IssueAgentAssignment.objects.filter(workspace__slug=slug, agent=agent, issue__in=visible)
             .select_related("assigned_by", "issue", "issue__project", "issue__state")
             .prefetch_related("issue__assignees")
             .order_by("created_at")
@@ -82,10 +84,13 @@ class WorkItemAgentAssignmentAPIEndpoint(BaseAPIView):
         )
 
     def get(self, request, slug, project_id, pk):
+        issue = self._issue(slug, project_id, pk)
+        if issue is None:
+            return Response({"error": "Work item not found"}, status=status.HTTP_404_NOT_FOUND)
         agent = _agent_from(request)
         if agent is None:
             return Response({"error": "unknown agent"}, status=status.HTTP_400_BAD_REQUEST)
-        assignment = get_assignment(pk, agent)
+        assignment = get_assignment(issue.id, agent)
         return Response(
             {
                 "agent": agent,
