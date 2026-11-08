@@ -18,13 +18,14 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, PermissionDenied
 from rest_framework.generics import GenericAPIView
 
 # Module imports
 from plane.api.middleware.api_authentication import APIKeyAuthentication
 from plane.api.middleware.oauth_authentication import OAuthBearerAuthentication
 from plane.api.rate_limit import ApiKeyRateThrottle
+from plane.db.models import OAuthToken
 from plane.utils.exception_logger import log_exception
 from plane.utils.paginator import BasePaginator
 from plane.utils.core.mixins import ReadReplicaControlMixin
@@ -47,7 +48,38 @@ class TimezoneMixin:
             timezone.deactivate()
 
 
-class BaseAPIView(TimezoneMixin, GenericAPIView, ReadReplicaControlMixin, BasePaginator):
+# BlockWill fork — an OAuth access token is granted for one workspace on the
+# consent screen. These are the only v1 routes without a workspace slug that
+# such a token may call (users/me/, which the MCP server uses to verify it).
+OAUTH_SLUGLESS_URL_NAMES = {"users"}
+OAUTH_SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
+
+
+class OAuthTokenScopeMixin:
+    """
+    Holds an OAuth access token to what was granted: the workspace picked on
+    the consent screen, and no writes for a token whose scope lacks "write".
+    API keys are not affected.
+    """
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        token = request.auth
+        if not isinstance(token, OAuthToken):
+            return
+        slug = kwargs.get("slug")
+        if slug is None:
+            if request.resolver_match is None or request.resolver_match.url_name not in OAUTH_SLUGLESS_URL_NAMES:
+                raise PermissionDenied("This OAuth token is not valid for this endpoint.")
+        elif slug != token.workspace.slug:
+            raise PermissionDenied("This OAuth token is not valid for this workspace.")
+        # An empty scope predates scope checks and was granted read and write.
+        scopes = set(token.scope.replace(",", " ").split())
+        if request.method not in OAUTH_SAFE_METHODS and scopes and "write" not in scopes:
+            raise PermissionDenied("This OAuth token is read-only.")
+
+
+class BaseAPIView(OAuthTokenScopeMixin, TimezoneMixin, GenericAPIView, ReadReplicaControlMixin, BasePaginator):
     authentication_classes = [APIKeyAuthentication, OAuthBearerAuthentication]
 
     permission_classes = [IsAuthenticated]
@@ -152,7 +184,7 @@ class BaseAPIView(TimezoneMixin, GenericAPIView, ReadReplicaControlMixin, BasePa
         return expand if expand else None
 
 
-class BaseViewSet(TimezoneMixin, ReadReplicaControlMixin, ModelViewSet, BasePaginator):
+class BaseViewSet(OAuthTokenScopeMixin, TimezoneMixin, ReadReplicaControlMixin, ModelViewSet, BasePaginator):
     model = None
 
     authentication_classes = [APIKeyAuthentication, OAuthBearerAuthentication]
