@@ -18,6 +18,9 @@
 # Multi-valued relations (assignee, label, cycle, ...) compile to
 # `id IN (subquery)` so NOT and != mean "has no such row", and a row in a join
 # table that was soft-deleted never matches.
+#
+# Lookups inside a query (relation("X"), membersOf("project:<id>")) only see
+# what the caller can see, so a query never confirms a hidden item or project.
 
 import re
 import uuid
@@ -44,8 +47,12 @@ from plane.db.models import (
     ProjectMember,
     WorkspaceMember,
 )
+from plane.db.models.project import ROLE
 
 MAX_CONDITIONS = 25
+# Nested parentheses, NOTs, lists and function calls; keeps the recursive
+# parser well clear of Python's recursion limit.
+MAX_DEPTH = 10
 
 PRIORITIES = ("urgent", "high", "medium", "low", "none")
 STATE_GROUPS = ("backlog", "unstarted", "started", "completed", "cancelled", "triage")
@@ -56,6 +63,19 @@ ACTIVE_STATES = ["unstarted", "started"]
 
 class PQLError(ValueError):
     """A PQL string that does not parse or cannot be evaluated."""
+
+
+def visible_to(user, slug):
+    """Work items the user can see across the workspace: projects they are an
+    active member of, and only their own items where they are a guest without
+    full feature access."""
+    memberships = ProjectMember.objects.filter(
+        workspace__slug=slug, member=user, is_active=True, project__archived_at__isnull=True
+    ).values_list("project_id", "role", "project__guest_view_all_features")
+    full, own_only = [], []
+    for project_id, role, guest_view_all in memberships:
+        (own_only if role == ROLE.GUEST.value and not guest_view_all else full).append(project_id)
+    return Q(project_id__in=full) | Q(project_id__in=own_only, created_by=user)
 
 
 # ---------------------------------------------------------------------------
@@ -135,9 +155,9 @@ class Context:
         return self.now().date()
 
     def resolve_work_item(self, ref):
-        """A work item by UUID or `PROJ-12` identifier, within the workspace."""
+        """A work item by UUID or `PROJ-12` identifier, among those the caller can see."""
         ref = str(ref).strip()
-        issues = Issue.objects.filter(workspace__slug=self.slug)
+        issues = Issue.objects.filter(workspace__slug=self.slug).filter(visible_to(self.user, self.slug))
         if _is_uuid(ref):
             issue = issues.filter(pk=ref).first()
         else:
@@ -204,6 +224,15 @@ def _members_of(ctx, ref):
     project_id = ref.split(":", 1)[1] if ref.lower().startswith("project:") else ref
     if not _is_uuid(project_id):
         raise PQLError('membersOf() takes "project:<project uuid>"')
+    # A project the caller is not in reads as empty, the same as an unknown id.
+    if not ProjectMember.objects.filter(
+        workspace__slug=ctx.slug,
+        project_id=project_id,
+        member=ctx.user,
+        is_active=True,
+        project__archived_at__isnull=True,
+    ).exists():
+        return []
     return [
         str(m)
         for m in ProjectMember.objects.filter(
@@ -530,6 +559,7 @@ class Parser:
         self.tokens = tokenize(text)
         self.i = 0
         self.ctx = ctx
+        self.depth = 0
 
     # -- token helpers --------------------------------------------------
     @property
@@ -562,6 +592,14 @@ class Parser:
         found = "end of query" if tok.kind == "end" else repr(tok.value)
         raise PQLError(f"{message} at position {tok.pos} (found {found})")
 
+    def nest(self):
+        self.depth += 1
+        if self.depth > MAX_DEPTH:
+            raise PQLError(f"Query is nested too deeply; the limit is {MAX_DEPTH} levels")
+
+    def unnest(self):
+        self.depth -= 1
+
     def count(self):
         self.ctx.conditions += 1
         if self.ctx.conditions > MAX_CONDITIONS:
@@ -593,11 +631,16 @@ class Parser:
     def parse_not(self):
         if self.at_keyword("NOT"):
             self.advance()
-            return ~self.parse_not()
+            self.nest()
+            q = ~self.parse_not()
+            self.unnest()
+            return q
         if self.at_punct("("):
             self.advance()
+            self.nest()
             q = self.parse_or()
             self.expect_punct(")")
+            self.unnest()
             return q
         return self.parse_condition()
 
@@ -704,6 +747,7 @@ class Parser:
                 self.fail("Expected a list")
             return value
         self.expect_punct("(")
+        self.nest()
         values = []
         while True:
             value = self.parse_value()
@@ -716,6 +760,7 @@ class Parser:
                 continue
             break
         self.expect_punct(")")
+        self.unnest()
         return values
 
     def parse_value(self):
@@ -738,6 +783,7 @@ class Parser:
             self.advance()
             arity, fn = VALUE_FUNCTIONS[key]
             self.expect_punct("(")
+            self.nest()
             args = []
             if not self.at_punct(")"):
                 args.append(self.parse_value())
@@ -745,6 +791,7 @@ class Parser:
                     self.advance()
                     args.append(self.parse_value())
             self.expect_punct(")")
+            self.unnest()
             if len(args) != arity:
                 raise PQLError(f"{tok.value}() takes {arity} argument(s), got {len(args)}")
             return fn(self.ctx, *args)

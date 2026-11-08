@@ -240,3 +240,57 @@ class TestWorkItemQueryV1:
         response = api_key_client.get(url, {"pql": f'state = "{uuid4()}" AND'})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "pql" in response.json()
+
+
+@pytest.mark.contract
+@pytest.mark.django_db
+class TestPQLVisibility:
+    """PLAT-17: lookups inside a query only see what the caller can see, and
+    over-deep nesting is refused."""
+
+    @pytest.fixture
+    def secret(self, workspace, other_user):
+        project = Project.objects.create(name="Secret", identifier="SEC", workspace=workspace, created_by=other_user)
+        ProjectMember.objects.create(project=project, member=other_user, role=20, is_active=True)
+        Issue.objects.create(name="Secret thing", workspace=workspace, project=project)
+        return project
+
+    @pytest.fixture
+    def guest(self, workspace, project):
+        user = User.objects.create(email="guest@plane.so", username="guest")
+        WorkspaceMember.objects.create(workspace=workspace, member=user, role=5)
+        ProjectMember.objects.create(project=project, member=user, role=5, is_active=True)
+        return user
+
+    def test_relation_lookups_skip_hidden_projects(self, workspace, create_user, other_user, items, secret):
+        with pytest.raises(PQLError, match='"SEC-1" was not found'):
+            compile_pql('childOf("SEC-1")', workspace.slug, create_user)
+        # the project's own member still resolves it
+        compile_pql('childOf("SEC-1")', workspace.slug, other_user)
+
+    def test_relation_lookups_follow_guest_rule(self, workspace, project, items, guest):
+        with pytest.raises(PQLError, match="was not found"):
+            compile_pql('childOf("WEB-1")', workspace.slug, guest)
+        Project.objects.filter(pk=project.pk).update(guest_view_all_features=True)
+        assert names('childOf("WEB-1")', workspace, guest) == ["Polish signup"]
+
+    def test_members_of_hidden_project_is_empty(self, workspace, create_user, other_user, items, secret):
+        pql = f'assignee IN membersOf("project:{secret.id}")'
+        assert names(pql, workspace, create_user) == []
+        # SEC's own member gets its roster (other_user, assigned to WEB-2)
+        assert names(pql, workspace, other_user) == ["Polish signup"]
+
+    def test_nesting_depth_is_limited(self, workspace, create_user, items):
+        ok = "(" * 10 + 'priority = "urgent"' + ")" * 10
+        assert names(ok, workspace, create_user) == ["Fix login capex bug"]
+        for deep in ("(" * 11 + 'priority = "urgent"' + ")" * 11, "NOT " * 500 + 'priority = "urgent"'):
+            with pytest.raises(PQLError, match="nested too deeply"):
+                compile_pql(deep, workspace.slug, create_user)
+
+    def test_too_deep_is_a_400_with_a_pql_key(self, api_key_client, settings, workspace, items):
+        settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+        response = api_key_client.get(
+            f"/api/v1/workspaces/{workspace.slug}/work-items/", {"pql": "(" * 1000 + 'priority = "urgent"' + ")" * 1000}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "nested too deeply" in response.json()["pql"]
