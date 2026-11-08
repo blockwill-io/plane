@@ -37,10 +37,13 @@ class IssueAgentAssignmentEndpoint(BaseAPIView):
 
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
     def get(self, request, slug, project_id, issue_id):
+        issue = self._issue(slug, project_id, issue_id)
+        if issue is None:
+            return Response({"error": "Work item not found"}, status=status.HTTP_404_NOT_FOUND)
         agent = self._agent(request)
         if agent is None:
             return Response({"error": "unknown agent"}, status=status.HTTP_400_BAD_REQUEST)
-        assignment = get_assignment(issue_id, agent)
+        assignment = get_assignment(issue.id, agent)
         return Response(
             {
                 "agent": agent,
