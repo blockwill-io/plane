@@ -9,6 +9,7 @@
 # redirect URIs, which signs everyone using that app out.
 
 import secrets
+from urllib.parse import urlparse
 
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
@@ -27,8 +28,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         uris = [uri.strip() for uri in options["redirect_uris"] if uri.strip()]
         for uri in uris:
-            if not (uri.startswith("https://") or uri.startswith("http://localhost")):
-                raise CommandError(f"redirect URI must be https (or http://localhost): {uri}")
+            # Stored newline-separated, so a line break inside one value would
+            # smuggle in a second, unchecked URI; URIs never contain whitespace.
+            if any(ch.isspace() for ch in uri):
+                raise CommandError(f"redirect URI must not contain whitespace or line breaks: {uri!r}")
+            parts = urlparse(uri)
+            secure = parts.scheme == "https" or (parts.scheme == "http" and parts.hostname == "localhost")
+            if not secure or not parts.hostname or parts.fragment:
+                raise CommandError(f"redirect URI must be https (or http://localhost), without a fragment: {uri}")
 
         secret = secrets.token_urlsafe(40)
         app = OAuthApplication.objects.filter(name=options["name"]).first()
