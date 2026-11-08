@@ -72,10 +72,10 @@ jobs:
       # ruff-clean, and we should not inherit that debt as a failing check.
       - name: Lint changed files
         run: |
-          files=$(git diff --name-only --diff-filter=ACMR "origin/${{ github.base_ref }}...HEAD" -- 'apps/api/**.py')
-          if [ -z "$files" ]; then echo "no Python changes"; exit 0; fi
-          echo "$files"
-          ruff check $files
+          mapfile -d '' -t files < <(git diff --name-only -z --diff-filter=ACMR "origin/${{ github.base_ref }}...HEAD" -- 'apps/api/**.py')
+          if ((${#files[@]} == 0)); then echo "no Python changes"; exit 0; fi
+          printf '%s\n' "${files[@]}"
+          ruff check "${files[@]}"
 
       - name: Django checks
         working-directory: apps/api
