@@ -167,6 +167,19 @@ class TestOAuthFlow:
 
 @pytest.mark.contract
 @pytest.mark.django_db
+def test_consent_shows_host_and_port_but_never_userinfo(browser, app, workspace):
+    redirect = "https://user:hunter2@mcp.example.com:8443/cb"
+    app.redirect_uris = redirect
+    app.save()
+    _, challenge = pkce()
+    assert authorize(browser, app, challenge, redirect_uri=redirect).status_code == 302
+    html = browser.get("/auth/o/authorize-app/consent/").content.decode()
+    assert "mcp.example.com:8443" in html
+    assert "hunter2" not in html and "user:" not in html
+
+
+@pytest.mark.contract
+@pytest.mark.django_db
 class TestOAuthRefusals:
     def test_unknown_client_and_redirect_never_redirect(self, browser, app):
         assert browser.get("/auth/o/authorize-app/", {"client_id": "nope", "response_type": "code"}).status_code == 400

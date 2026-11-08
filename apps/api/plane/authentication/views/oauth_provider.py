@@ -289,7 +289,9 @@ class OAuthConsentEndpoint(View):
         options = "".join(f'<option value="{escape(w.slug)}">{escape(w.name)}</option>' for w in workspaces)
         app = escape(application.name)
         # Show where the approval goes, so a link someone else started stands out.
-        host = escape(urlparse(pending["redirect_uri"]).netloc)
+        # hostname and port only: netloc would also show any user:password@ part.
+        target = urlparse(pending["redirect_uri"])
+        host = escape(target.hostname + (f":{target.port}" if target.port else ""))
         body = f"""
 <h1>Allow {app} to use your Plane account?</h1>
 <p class="who">Signed in as <strong>{escape(request.user.email)}</strong></p>
