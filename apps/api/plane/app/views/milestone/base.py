@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from plane.app.permissions import ROLE, allow_permission
 from plane.app.serializers import IssueSerializer, MilestoneSerializer, MilestoneWriteSerializer
 from plane.db.models import Issue, IssueMilestone, Milestone
+from plane.utils.guest_scope import guest_scope, is_restricted_guest
 
 from ..base import BaseViewSet
 
@@ -27,8 +28,15 @@ class MilestoneViewSet(BaseViewSet):
         )
 
     def get_queryset(self):
+        slug, project_id = self.kwargs.get("slug"), self.kwargs.get("project_id")
+        # Counts and issue_ids only cover the items a restricted guest can see.
+        own, own_link = Q(), Q()
+        if is_restricted_guest(self.request.user, slug, project_id):
+            own = Q(created_by=self.request.user)
+            own_link = Q(milestone_issues__issue__created_by=self.request.user)
         completed_issues = (
             Issue.issue_objects.filter(
+                own,
                 state__group="completed",
                 issue_milestone__milestone_id=OuterRef("pk"),
                 issue_milestone__deleted_at__isnull=True,
@@ -39,6 +47,7 @@ class MilestoneViewSet(BaseViewSet):
         )
         total_issues = (
             Issue.issue_objects.filter(
+                own,
                 issue_milestone__milestone_id=OuterRef("pk"),
                 issue_milestone__deleted_at__isnull=True,
             )
@@ -47,10 +56,7 @@ class MilestoneViewSet(BaseViewSet):
             .values("cnt")
         )
         return (
-            Milestone.objects.filter(
-                workspace__slug=self.kwargs.get("slug"),
-                project_id=self.kwargs.get("project_id"),
-            )
+            Milestone.objects.filter(workspace__slug=slug, project_id=project_id)
             .annotate(completed_issues=Coalesce(Subquery(completed_issues[:1]), Value(0, output_field=IntegerField())))
             .annotate(total_issues=Coalesce(Subquery(total_issues[:1]), Value(0, output_field=IntegerField())))
             # The linked work item ids travel with the list response so the UI can
@@ -61,7 +67,8 @@ class MilestoneViewSet(BaseViewSet):
                         "milestone_issues__issue_id",
                         distinct=True,
                         filter=Q(milestone_issues__deleted_at__isnull=True)
-                        & Q(milestone_issues__issue__isnull=False),
+                        & Q(milestone_issues__issue__isnull=False)
+                        & own_link,
                     ),
                     Value([], output_field=ArrayField(UUIDField())),
                 )
@@ -113,11 +120,16 @@ class MilestoneIssueViewSet(BaseViewSet):
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
     def list(self, request, slug, project_id, milestone_id):
         issues = (
-            Issue.issue_objects.filter(
-                workspace__slug=slug,
-                project_id=project_id,
-                issue_milestone__milestone_id=milestone_id,
-                issue_milestone__deleted_at__isnull=True,
+            guest_scope(
+                Issue.issue_objects.filter(
+                    workspace__slug=slug,
+                    project_id=project_id,
+                    issue_milestone__milestone_id=milestone_id,
+                    issue_milestone__deleted_at__isnull=True,
+                ),
+                request.user,
+                slug,
+                project_id,
             )
             .select_related("project", "workspace", "state", "parent")
             .prefetch_related("assignees", "labels")

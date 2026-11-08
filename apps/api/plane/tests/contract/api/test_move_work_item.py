@@ -3,12 +3,17 @@
 Covers the images a description shows: an image uploaded through the generic
 asset endpoint has a project and no issue, and was left in the old project on
 a move, so the moved description showed "Error loading image".
+
+Also covers who may move (PLAT-6): moving follows Plane's delete rule, so only
+the item's creator or a source project admin may move it.
 """
 
 import pytest
 from rest_framework import status
+from rest_framework.test import APIClient
 
-from plane.db.models import FileAsset, Issue, Project, ProjectMember, State
+from plane.db.models import FileAsset, Issue, Project, ProjectMember, State, User, WorkspaceMember
+from plane.db.models.api import APIToken
 
 
 def _project(workspace, user, name, identifier):
@@ -137,3 +142,73 @@ class TestMoveWorkItemDescriptionImages:
         assert response.status_code == status.HTTP_200_OK
         asset.refresh_from_db()
         assert asset.project_id == elsewhere.id
+
+
+@pytest.fixture
+def member(db, workspace, web, unsorted):
+    """A plain Member of both projects, with an API key."""
+    user = User.objects.create(email="member@plane.so", username="member", first_name="Mem", last_name="Ber")
+    WorkspaceMember.objects.create(workspace=workspace, member=user, role=15)
+    ProjectMember.objects.create(project=web, member=user, role=15, is_active=True)
+    ProjectMember.objects.create(project=unsorted, member=user, role=15, is_active=True)
+    return user
+
+
+def _client(user, token):
+    APIToken.objects.create(user=user, label="Test", token=token)
+    client = APIClient()
+    client.credentials(HTTP_X_API_KEY=token)
+    return client
+
+
+def _created_by(user, **fields):
+    # BaseModel.save sets created_by from the request user, so set it after.
+    issue = Issue.objects.create(**fields)
+    Issue.objects.filter(pk=issue.pk).update(created_by=user)
+    return issue
+
+
+@pytest.mark.contract
+@pytest.mark.django_db
+class TestMoveWorkItemWhoMayMove:
+    def move(self, client, workspace, project, issue, target):
+        url = f"/api/v1/workspaces/{workspace.slug}/projects/{project.id}/issues/{issue.id}/move/"
+        return client.post(url, {"target_project_id": str(target.id)}, format="json")
+
+    def test_member_cannot_move_someone_elses_item(self, workspace, create_user, web, unsorted, member):
+        issue = _created_by(create_user, name="Admin's item", workspace=workspace, project=web)
+
+        response = self.move(_client(member, "member-key"), workspace, web, issue, unsorted)
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        issue.refresh_from_db()
+        assert issue.project_id == web.id
+
+    def test_member_can_move_own_item(self, workspace, web, unsorted, member):
+        issue = _created_by(member, name="Own item", workspace=workspace, project=web)
+
+        response = self.move(_client(member, "member-key"), workspace, web, issue, unsorted)
+
+        assert response.status_code == status.HTTP_200_OK
+        issue.refresh_from_db()
+        assert issue.project_id == unsorted.id
+
+    def test_source_admin_can_move_someone_elses_item(self, workspace, create_user, web, unsorted, member):
+        issue = _created_by(member, name="Member's item", workspace=workspace, project=web)
+
+        response = self.move(_client(create_user, "admin-key"), workspace, web, issue, unsorted)
+
+        assert response.status_code == status.HTTP_200_OK
+        issue.refresh_from_db()
+        assert issue.project_id == unsorted.id
+
+    def test_creator_still_needs_target_membership(self, workspace, create_user, web, member):
+        private = _project(workspace, create_user, "Private", "PRV")
+        issue = _created_by(member, name="Own item", workspace=workspace, project=web)
+
+        response = self.move(_client(member, "member-key"), workspace, web, issue, private)
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json()["error"] == "you must be a member of the target project"
+        issue.refresh_from_db()
+        assert issue.project_id == web.id

@@ -6,8 +6,20 @@ uses, the activity lines both record, and the `agent` work item filter.
 
 import pytest
 from rest_framework import status
+from rest_framework.test import APIClient
 
-from plane.db.models import Issue, IssueActivity, IssueAgentAssignment, Project, ProjectMember, State
+from plane.db.models import (
+    Issue,
+    IssueActivity,
+    IssueAgentAssignment,
+    Project,
+    ProjectMember,
+    State,
+    User,
+    WorkspaceMember,
+)
+from plane.db.models.api import APIToken
+from plane.utils.agent_assignment import assign_agent
 from plane.utils.filters.filter_backend import ComplexFilterBackend
 from plane.utils.filters.filterset import IssueFilterSet
 
@@ -164,3 +176,77 @@ class TestAgentAssignmentV1:
         )
         queue = api_key_client.get(f"/api/v1/workspaces/{workspace.slug}/agent-assignments/").json()
         assert [r["work_item"]["id"] for r in queue["results"]] == [str(issues[1].id)]
+
+
+def _member(workspace, email, workspace_role, projects=()):
+    """A workspace member with an API key client; `projects` is (project, role) pairs."""
+    user = User.objects.create(email=email, username=email.split("@")[0])
+    WorkspaceMember.objects.create(workspace=workspace, member=user, role=workspace_role)
+    for project, role in projects:
+        ProjectMember.objects.create(project=project, member=user, role=role, is_active=True)
+    client = APIClient()
+    client.credentials(HTTP_X_API_KEY=APIToken.objects.create(user=user, label="t", token=f"key-{user.id}").token)
+    return user, client
+
+
+@pytest.mark.contract
+@pytest.mark.django_db
+class TestAgentAssignmentVisibility:
+    """PLAT-4: the queue only lists items the caller can see, and the single-item
+    lookups are bound to the URL project."""
+
+    @pytest.fixture(autouse=True)
+    def local_cache(self, settings):
+        settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+    @pytest.fixture
+    def private(self, workspace, create_user):
+        project = Project.objects.create(name="Sec", identifier="SEC", workspace=workspace, created_by=create_user)
+        ProjectMember.objects.create(project=project, member=create_user, role=20, is_active=True)
+        state = State.objects.create(name="Todo", project=project, workspace=workspace, group="unstarted")
+        issue = Issue.objects.create(
+            name="Hidden", workspace=workspace, project=project, state=state, created_by=create_user
+        )
+        assign_agent(issue, "startupos", create_user)
+        return project, issue
+
+    def queue(self, client, workspace):
+        body = client.get(f"/api/v1/workspaces/{workspace.slug}/agent-assignments/").json()
+        return {r["work_item"]["id"] for r in body["results"]}
+
+    def test_queue_is_limited_to_visible_projects(self, api_key_client, workspace, project, issues, private):
+        assign_agent(issues[0], "startupos", issues[0].created_by)
+        _, hidden = private
+        _, member = _member(workspace, "member@plane.so", 15, [(project, 15)])
+        _, outsider = _member(workspace, "outsider@plane.so", 15)
+
+        assert self.queue(api_key_client, workspace) == {str(issues[0].id), str(hidden.id)}
+        assert self.queue(member, workspace) == {str(issues[0].id)}
+        assert self.queue(outsider, workspace) == set()
+
+    def test_queue_respects_guest_view_all(self, workspace, project, issues):
+        assign_agent(issues[0], "startupos", issues[0].created_by)
+        guest, client = _member(workspace, "guest@plane.so", 5, [(project, 5)])
+        own = Issue.objects.create(name="Guest's", workspace=workspace, project=project, state=issues[0].state)
+        Issue.objects.filter(pk=own.pk).update(created_by=guest)  # save() resets created_by outside a request
+        assign_agent(own, "startupos", issues[0].created_by)
+
+        assert self.queue(client, workspace) == {str(own.id)}
+        Project.objects.filter(pk=project.pk).update(guest_view_all_features=True)
+        assert self.queue(client, workspace) == {str(own.id), str(issues[0].id)}
+
+    def test_single_item_get_is_bound_to_url_project(
+        self, session_client, api_key_client, workspace, project, issues, private
+    ):
+        sec, hidden = private
+        ws = f"workspaces/{workspace.slug}/projects"
+        v1 = f"/api/v1/{ws}/{project.id}/work-items/{hidden.id}/agent-assignment/"
+        app = f"/api/{ws}/{project.id}/issues/{hidden.id}/agent-assignment/"
+        assert api_key_client.get(v1).status_code == status.HTTP_404_NOT_FOUND
+        assert session_client.get(app).status_code == status.HTTP_404_NOT_FOUND
+
+        # the item's own project still answers
+        v1 = f"/api/v1/{ws}/{sec.id}/work-items/{hidden.id}/agent-assignment/"
+        app = f"/api/{ws}/{sec.id}/issues/{hidden.id}/agent-assignment/"
+        assert api_key_client.get(v1).json()["assigned"] is True
+        assert session_client.get(app).json()["assigned"] is True

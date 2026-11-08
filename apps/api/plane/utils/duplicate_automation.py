@@ -17,14 +17,20 @@ from plane.db.models import Issue, IssueActivity, IssueRelation, State
 OPEN_STATE_GROUPS = ("backlog", "unstarted", "started")
 
 
-def cancel_duplicate_issue(issue_id, actor):
+def cancel_duplicate_issue(issue_id, actor, project_id, workspace_slug):
     """Move a work item that was just marked as a duplicate into its
     project's "Duplicate" state (or the cancelled group's first state).
 
-    No-op when the item is already completed/cancelled, or when no suitable
-    state exists. Returns the new state or None.
+    The lookup is bound to the caller's project and workspace, so an ID from
+    anywhere else is a no-op. No-op when the item is already
+    completed/cancelled, or when no suitable state exists. Returns the new
+    state or None.
     """
-    issue = Issue.objects.filter(pk=issue_id).select_related("state").first()
+    issue = (
+        Issue.objects.filter(pk=issue_id, project_id=project_id, workspace__slug=workspace_slug)
+        .select_related("state")
+        .first()
+    )
     if issue is None or issue.state is None:
         return None
     if issue.state.group not in OPEN_STATE_GROUPS:
