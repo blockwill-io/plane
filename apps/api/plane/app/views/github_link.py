@@ -13,6 +13,7 @@ from rest_framework.response import Response
 
 from plane.app.permissions import ProjectEntityPermission
 from plane.db.models import IssueLink
+from plane.utils.guest_scope import guest_scope
 
 from .base import BaseAPIView
 
@@ -45,10 +46,12 @@ class ProjectGithubLinkSummaryEndpoint(BaseAPIView):
 
     def get(self, request, slug, project_id):
         summary = {}
-        links = IssueLink.objects.filter(
-            workspace__slug=slug,
-            project_id=project_id,
-            url__icontains="github.com",
+        links = guest_scope(
+            IssueLink.objects.filter(workspace__slug=slug, project_id=project_id, url__icontains="github.com"),
+            request.user,
+            slug,
+            project_id,
+            field="issue__created_by",
         ).values_list("issue_id", "url", "title")
         for issue_id, url, title in links:
             state = _classify(url, title)

@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from plane.app.permissions import ROLE, allow_permission
 from plane.db.models import AGENTS, Issue, IssueAgentAssignment
 from plane.utils.agent_assignment import assign_agent, get_assignment, serialize_assignment, unassign_agent
+from plane.utils.guest_scope import guest_scope
 
 from .base import BaseAPIView
 
@@ -19,9 +20,13 @@ class ProjectAgentAssignmentSummaryEndpoint(BaseAPIView):
 
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
     def get(self, request, slug, project_id):
-        assignments = IssueAgentAssignment.objects.filter(workspace__slug=slug, project_id=project_id).select_related(
-            "assigned_by"
-        )
+        assignments = guest_scope(
+            IssueAgentAssignment.objects.filter(workspace__slug=slug, project_id=project_id),
+            request.user,
+            slug,
+            project_id,
+            field="issue__created_by",
+        ).select_related("assigned_by")
         return Response({str(a.issue_id): serialize_assignment(a) for a in assignments})
 
 
