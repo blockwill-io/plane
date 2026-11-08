@@ -87,6 +87,10 @@ jobs:
       # mail backend, projects-lite throttling); they are not ours to fix here.
       - name: Run tests
         working-directory: apps/api
+        # Every test uses the same fixed API token, so the whole suite shares
+        # one 60/minute API-key budget and later tests get 429s. Lift it here.
+        env:
+          API_KEY_RATE_LIMIT: 100000/minute
         run: |
           pytest plane/tests -q -p no:cacheprovider -o addopts="--nomigrations --create-db" \
             --deselect plane/tests/contract/api/test_projects_lite.py::TestProjectsLite::test_returns_only_lite_fields \
