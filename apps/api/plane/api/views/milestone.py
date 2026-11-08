@@ -78,6 +78,9 @@ class MilestoneWorkItemAPIEndpoint(BaseAPIView):
 
     permission_classes = [ProjectEntityPermission]
 
+    def _milestone_in_project(self, slug, project_id, milestone_id):
+        return Milestone.objects.filter(workspace__slug=slug, project_id=project_id, pk=milestone_id).exists()
+
     def get(self, request, slug, project_id, milestone_id):
         return self.paginate(
             request=request,
@@ -88,6 +91,8 @@ class MilestoneWorkItemAPIEndpoint(BaseAPIView):
         )
 
     def post(self, request, slug, project_id, milestone_id):
+        if not self._milestone_in_project(slug, project_id, milestone_id):
+            return Response({"error": "Milestone not found"}, status=status.HTTP_404_NOT_FOUND)
         issue_ids = request.data.get("issues", [])
         if not issue_ids:
             return Response({"error": "issues are required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -101,6 +106,8 @@ class MilestoneWorkItemAPIEndpoint(BaseAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def delete(self, request, slug, project_id, milestone_id):
+        if not self._milestone_in_project(slug, project_id, milestone_id):
+            return Response({"error": "Milestone not found"}, status=status.HTTP_404_NOT_FOUND)
         issue_ids = request.data.get("issues", [])
         qs = IssueMilestone.objects.filter(
             workspace__slug=slug, project_id=project_id, milestone_id=milestone_id

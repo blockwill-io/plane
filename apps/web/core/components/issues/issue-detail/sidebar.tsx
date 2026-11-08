@@ -43,7 +43,7 @@ import { IssueCycleSelect } from "./cycle-select";
 import { IssueLabel } from "./label";
 import { IssueMilestoneSelect } from "./milestone-select";
 import { IssueAgentAssignment } from "./agent-assignment";
-import { IssuePullRequests } from "./pull-requests";
+import { IssuePullRequests, PULL_REQUEST_URL } from "./pull-requests";
 import { IssueModuleSelect } from "./module-select";
 import type { TIssueOperations } from "./root";
 
@@ -79,7 +79,7 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
   // BlockWill fork: only show the pull requests row when there is one to show,
   // rather than adding a permanently empty property to every work item.
   const hasPullRequests = (getLinksByIssueId(issueId) ?? []).some((linkId) =>
-    /github\.com\/[^/]+\/[^/]+\/pull\/\d+/i.test(getLinkById(linkId)?.url ?? "")
+    PULL_REQUEST_URL.test(getLinkById(linkId)?.url ?? "")
   );
 
   const minDate = issue.start_date ? getDate(issue.start_date) : null;
