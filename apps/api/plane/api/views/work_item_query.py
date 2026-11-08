@@ -28,7 +28,7 @@ from plane.db.models import (
 from plane.db.models.project import ROLE
 from plane.utils.filters import ComplexFilterBackend, IssueFilterSet
 from plane.utils.order_queryset import order_issue_queryset
-from plane.utils.pql import PQLError, compile_pql, work_item_base_queryset
+from plane.utils.pql import PQLError, compile_pql, visible_to, work_item_base_queryset
 
 from .base import BaseAPIView
 
@@ -76,19 +76,6 @@ def work_item_query(request, slug, project_id=None):
         q = filters_q if q is None else q & filters_q
 
     return q, hidden
-
-
-def visible_to(user, slug):
-    """Work items the user can see across the workspace: projects they are an
-    active member of, and only their own items where they are a guest without
-    full feature access."""
-    memberships = ProjectMember.objects.filter(
-        workspace__slug=slug, member=user, is_active=True, project__archived_at__isnull=True
-    ).values_list("project_id", "role", "project__guest_view_all_features")
-    full, own_only = [], []
-    for project_id, role, guest_view_all in memberships:
-        (own_only if role == ROLE.GUEST.value and not guest_view_all else full).append(project_id)
-    return Q(project_id__in=full) | Q(project_id__in=own_only, created_by=user)
 
 
 def _with_list_annotations(queryset):
