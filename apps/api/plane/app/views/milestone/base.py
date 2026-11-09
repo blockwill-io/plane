@@ -117,6 +117,9 @@ class MilestoneViewSet(BaseViewSet):
 class MilestoneIssueViewSet(BaseViewSet):
     model = IssueMilestone
 
+    def _milestone_in_project(self, slug, project_id, milestone_id):
+        return Milestone.objects.filter(workspace__slug=slug, project_id=project_id, pk=milestone_id).exists()
+
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
     def list(self, request, slug, project_id, milestone_id):
         issues = (
@@ -139,6 +142,8 @@ class MilestoneIssueViewSet(BaseViewSet):
 
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
     def create(self, request, slug, project_id, milestone_id):
+        if not self._milestone_in_project(slug, project_id, milestone_id):
+            return Response({"error": "Milestone not found"}, status=status.HTTP_404_NOT_FOUND)
         issue_ids = request.data.get("issues", [])
         if not issue_ids:
             return Response({"error": "issues are required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -156,6 +161,8 @@ class MilestoneIssueViewSet(BaseViewSet):
 
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
     def destroy(self, request, slug, project_id, milestone_id, issue_id):
+        if not self._milestone_in_project(slug, project_id, milestone_id):
+            return Response({"error": "Milestone not found"}, status=status.HTTP_404_NOT_FOUND)
         IssueMilestone.objects.filter(
             milestone_id=milestone_id, issue_id=issue_id, project_id=project_id
         ).delete()

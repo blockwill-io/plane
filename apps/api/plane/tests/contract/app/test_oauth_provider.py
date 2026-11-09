@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import Client
 from django.utils import timezone
 
@@ -100,6 +101,9 @@ class TestOAuthFlow:
         assert page.status_code == 200
         html = page.content.decode()
         assert "Allow Plane MCP" in html and workspace.name in html and create_user.email in html
+        # PLAT-14: the redirect host and a warning, against links someone else started.
+        assert "mcp.example.com" in html
+        assert "Only approve if you just started this from your own app." in html
 
         response = allow(browser, workspace)
         assert response["Location"].startswith(REDIRECT + "?")
@@ -111,7 +115,7 @@ class TestOAuthFlow:
         assert tokens.status_code == 200
         body = tokens.json()
         assert body["token_type"] == "Bearer" and body["expires_in"] == 3600
-        assert body["refresh_expires_in"] == 365 * 24 * 3600
+        assert body["refresh_expires_in"] == 90 * 24 * 3600
         assert body["access_token"].startswith("plane_oat_") and body["refresh_token"].startswith("plane_ort_")
 
         # The token works on the v1 API, as the user who allowed it.
@@ -164,6 +168,19 @@ class TestOAuthFlow:
 
 @pytest.mark.contract
 @pytest.mark.django_db
+def test_consent_shows_host_and_port_but_never_userinfo(browser, app, workspace):
+    redirect = "https://user:hunter2@mcp.example.com:8443/cb"
+    app.redirect_uris = redirect
+    app.save()
+    _, challenge = pkce()
+    assert authorize(browser, app, challenge, redirect_uri=redirect).status_code == 302
+    html = browser.get("/auth/o/authorize-app/consent/").content.decode()
+    assert "mcp.example.com:8443" in html
+    assert "hunter2" not in html and "user:" not in html
+
+
+@pytest.mark.contract
+@pytest.mark.django_db
 class TestOAuthRefusals:
     def test_unknown_client_and_redirect_never_redirect(self, browser, app):
         assert browser.get("/auth/o/authorize-app/", {"client_id": "nope", "response_type": "code"}).status_code == 400
@@ -173,6 +190,11 @@ class TestOAuthRefusals:
     def test_plain_pkce_rejected(self, browser, app):
         response = authorize(browser, app, "abc", code_challenge_method="plain")
         assert parse_qs(urlparse(response["Location"]).query)["error"] == ["invalid_request"]
+
+    def test_unknown_scope_rejected(self, browser, app):
+        response = authorize(browser, app, pkce()[1], scope="read admin")
+        assert parse_qs(urlparse(response["Location"]).query)["error"] == ["invalid_scope"]
+        assert "plane_oauth_request" not in response.cookies
 
     def test_wrong_verifier_secret_and_redirect(self, browser, app, workspace):
         verifier, challenge = pkce()
@@ -282,3 +304,28 @@ def test_create_oauth_app_command(capsys):
 
     call_command("create_oauth_app", "--name", "Plane MCP", "--redirect-uri", REDIRECT)
     assert not app.__class__.objects.get(pk=app.pk).check_secret(secret)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "http://localhost.evil.com/cb",
+        "http://localhost@evil.com/cb",
+        "http://example.com/cb",
+        "https:///cb",
+        REDIRECT + "#x",
+        REDIRECT + "\nhttp://evil.example/cb",
+        REDIRECT + "\u2028http://evil.example/cb",
+    ],
+)
+def test_create_oauth_app_rejects_unsafe_redirects(uri):
+    with pytest.raises(CommandError):
+        call_command("create_oauth_app", "--name", "Bad", "--redirect-uri", uri)
+    assert not OAuthApplication.objects.filter(name="Bad").exists()
+
+
+@pytest.mark.django_db
+def test_create_oauth_app_allows_localhost(capsys):
+    call_command("create_oauth_app", "--name", "Local", "--redirect-uri", "http://localhost:8211/callback")
+    assert OAuthApplication.objects.get(name="Local").redirect_uri_list == ["http://localhost:8211/callback"]
