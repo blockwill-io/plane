@@ -22,6 +22,10 @@ on:
 permissions:
   contents: read
   packages: write
+  # Signed build provenance (PLAT-26): the OIDC token proves which workflow
+  # and branch built the image; vm-jarvis checks it before deploying.
+  id-token: write
+  attestations: write
 
 concurrency:
   group: blockwill-build-${{ github.ref }}
@@ -47,6 +51,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
@@ -58,6 +63,13 @@ jobs:
             ghcr.io/blockwill-io/plane-frontend:blockwill-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Sign build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with:
+          subject-name: ghcr.io/blockwill-io/plane-frontend
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
   build_api:
     name: Build & push api (plane-backend)
@@ -78,6 +90,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./apps/api
@@ -89,3 +102,10 @@ jobs:
             ghcr.io/blockwill-io/plane-backend:blockwill-${{ github.sha }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
+
+      - name: Sign build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with:
+          subject-name: ghcr.io/blockwill-io/plane-backend
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
