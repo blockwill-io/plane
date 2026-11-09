@@ -85,6 +85,34 @@ class TestMilestoneLinkProjectScope:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert not IssueMilestone.objects.filter(milestone=theirs).exists()
 
+    def unlink(self, which, session_client, v1_client, workspace, project, milestone, issue):
+        if which == "app":
+            url = self.app_url(workspace, project, milestone) + f"{issue.id}/"
+            return session_client.delete(url)
+        return v1_client.delete(self.v1_url(workspace, project, milestone), {"issues": [str(issue.id)]}, format="json")
+
+    @pytest.mark.parametrize("which", ["app", "v1"])
+    def test_unlinks_from_own_milestone(self, which, session_client, v1_client, workspace, web):
+        milestone = Milestone.objects.create(title="Launch", project=web, workspace=workspace)
+        issue = _issue(web)
+        IssueMilestone.objects.create(milestone=milestone, issue=issue, project=web, workspace=workspace)
+
+        response = self.unlink(which, session_client, v1_client, workspace, web, milestone, issue)
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not IssueMilestone.objects.filter(milestone=milestone, issue=issue).exists()
+
+    @pytest.mark.parametrize("which", ["app", "v1"])
+    def test_unlink_from_another_projects_milestone_is_404(self, which, session_client, v1_client, workspace, web, ops):
+        theirs = Milestone.objects.create(title="Their launch", project=ops, workspace=workspace)
+        their_issue = _issue(ops)
+        IssueMilestone.objects.create(milestone=theirs, issue=their_issue, project=ops, workspace=workspace)
+
+        response = self.unlink(which, session_client, v1_client, workspace, web, theirs, their_issue)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert IssueMilestone.objects.filter(milestone=theirs, issue=their_issue).exists()
+
 
 @pytest.fixture
 def intake_item(db, workspace, create_user, web):
