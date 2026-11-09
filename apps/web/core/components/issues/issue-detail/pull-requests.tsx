@@ -40,7 +40,9 @@ const STATE_PRESENTATION: Record<TPullRequestState, { icon: typeof GitPullReques
   closed: { icon: GitPullRequestClosed, className: "text-danger-primary" },
 };
 
-const PULL_REQUEST_URL = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/i;
+// Anchored to https://github.com/ so a lookalike link (another host whose URL
+// merely contains "github.com") is not shown as a GitHub pull request.
+export const PULL_REQUEST_URL = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:[/?#]|$)/i;
 const STATES: TPullRequestState[] = ["open", "draft", "merged", "closed"];
 
 /**
