@@ -6,11 +6,15 @@ name: BlockWill - PR checks
 #
 # Upstream's own lint/test workflows only target `preview`, so they never run
 # for our PRs; this is the gate for the fork.
+#
+# blockwill-build.yml also calls this workflow and builds the images only when
+# it passes, so a push that skipped a pull request cannot ship untested code.
 
 on:
   pull_request:
     branches:
       - blockwill
+  workflow_call:
 
 permissions:
   contents: read
@@ -70,7 +74,9 @@ jobs:
 
       # Lint only the Python files this PR touches: upstream's tree is not
       # ruff-clean, and we should not inherit that debt as a failing check.
+      # Pull requests only: on a build the change was already linted in its PR.
       - name: Lint changed files
+        if: github.event_name == 'pull_request'
         run: |
           mapfile -d '' -t files < <(git diff --name-only -z --diff-filter=ACMR "origin/${{ github.base_ref }}...HEAD" -- 'apps/api/**.py')
           if ((${#files[@]} == 0)); then echo "no Python changes"; exit 0; fi
