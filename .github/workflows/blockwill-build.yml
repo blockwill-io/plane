@@ -32,8 +32,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The same API tests and Django checks a pull request must pass. Nothing is
+  # built or pushed (so vm-jarvis deploys nothing) unless they pass on the
+  # exact commit being shipped.
+  tests:
+    uses: ./.github/workflows/blockwill-pr-checks.yml
+
   build_web:
     name: Build & push web (plane-frontend)
+    needs: tests
     runs-on: ubuntu-22.04
     environment: production
     steps:
@@ -73,6 +80,7 @@ jobs:
 
   build_api:
     name: Build & push api (plane-backend)
+    needs: tests
     runs-on: ubuntu-22.04
     environment: production
     steps:
